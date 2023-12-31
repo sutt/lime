@@ -2,7 +2,7 @@ python main.py ^
     -f ../wordle-qa-2/json-state/input-json-state-1.md ^
     -m "gpt-3.5-turbo" ^
     -u 4 ^
-    -j ^
+    -y ^
     -v 1 
 
 @REM -f ../wordle-qa-1/kappa/input-common-sense-1.md ^
