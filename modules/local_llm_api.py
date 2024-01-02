@@ -12,7 +12,8 @@ class LocalParams:
 
 
 class LocalModelFns:
-    llama_7b = '../../data/llama-2-7b.Q4_K_M.gguf'
+    llama_7b = '../../alpha-app/data/llama-2-7b.Q4_K_M.gguf'
+    
     # llama_13b_chat = '../../data/llama-2-13b.Q4_K_M.gguf'
 
 

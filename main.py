@@ -96,8 +96,8 @@ def eval_sheet(
     input_schema_fn: str,
     model_name: str,
     output_md_fn: str,
+    output_json_fn: str,
     run_id: Union[None, str] = None,
-    output_json_fn: Union[None, str] = None,
     output_grade_fn: Union[None, str] = None,
     tic: Union[None, float] = None,
     verbose_level: int = 0,
@@ -257,7 +257,6 @@ if __name__ == '__main__':
     argparser.add_argument('-s', '--schema_fn',     type=str)
     argparser.add_argument('-m', '--model_name',    type=str)
     argparser.add_argument('-o', '--output_dir',    type=str)
-    argparser.add_argument('-j', '--output_json',   action='store_true')
     argparser.add_argument('-y', '--dry_run',       action='store_true')
     argparser.add_argument('-u', '--uuid_digits',   type=int, default=0)
     argparser.add_argument('-v', '--verbose',       type=int, default=0)
@@ -347,10 +346,7 @@ if __name__ == '__main__':
         
         output_md_fn   = output_dir + output_fn + '.md'
         
-        if args['output_json']:
-            output_json_fn = output_dir + output_fn + '.json' 
-        else:
-            output_json_fn = None
+        output_json_fn = output_dir + output_fn + '.json' 
 
         output_grade_fn = output_dir + f'grade{tmp_fn}-{model_name}{uuid_fn}.json'
 

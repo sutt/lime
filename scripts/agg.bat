@@ -1,6 +1,6 @@
 
 python agg.py ^
-    -i ../wordle-qa-2/_results ^
+    -i ../datasets/wordle-qa-2/_results ^
     -v 
     
 @REM -d

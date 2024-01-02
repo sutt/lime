@@ -9,7 +9,8 @@
         "role": "assistant",
         "function_call": null,
         "tool_calls": null
-      }
+      },
+      "logprobs": null
     }
   ],
   "created": 1701478106,

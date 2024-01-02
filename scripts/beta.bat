@@ -1,10 +1,10 @@
 python main.py ^
-    -f ../wordle-qa-2/json-state/input-json-state-1.md ^
+    -f ../datasets/wordle-qa-2/rules-qa/input-rules-qa-1.md ^
     -m "gpt-3.5-turbo" ^
     -u 4 ^
-    -y ^
     -v 1 
 
+    @REM -y ^
 @REM -f ../wordle-qa-1/kappa/input-common-sense-1.md ^
 @REM -f ../wordle-qa-1/delta/input-noanswer.md ^
 @REM -m ../../data/llama-2-7b.Q4_K_M.gguf ^
