@@ -3,7 +3,7 @@ from typing import Union
 from modules.parse import parse_wrapper
 from modules.grading import fuzzier_match
 from modules.oai_api import submit_prompt, get_completion
-from modules.local_llm_api import LocalModel
+from modules.local_llm_api import LocalModel, LocalModelCache
 from modules.output import output_json, output_markdown
 
 
@@ -14,7 +14,10 @@ gen_params = {
 
 def prompt_model(
   prompt: str,
-  model_name: str,      
+  model_name: str,
+  prompt_sys: str = None,
+  prompt_usr: str = None,
+  model_cache: Union[None, LocalModelCache] = None
 ):
     error = None
     if model_name.startswith('gpt'):
@@ -32,10 +35,20 @@ def prompt_model(
 
     else:        
         try:
-            # TODO - cache a loaded model
-            model = LocalModel(model_name)
-            output = model(prompt)
-            answer = LocalModel.get_completion(output)
+            if ((model_cache is not None) and
+                (prompt_sys is not None) and 
+                (prompt_usr is not None)
+                ):
+                model_cache.get(model_name, prompt_sys)
+                output = model_cache.eval_question(
+                    prompt_usr,
+                    # **gen_params,
+                )
+                answer = output.get('text')
+            else:
+                model = LocalModel(model_name)
+                output = model(prompt)
+                answer = LocalModel.get_completion(output)
         except Exception as e:
             error = e
             answer = None
@@ -133,6 +146,12 @@ def eval_sheet(
     all_questions = [q for q in json_doc if q['type'] == 'question']
     
     if verbose_level > 0: print(f"Found {len(all_questions)} questions")
+
+    model_cache = None
+    if not(model_name.startswith('gpt')):
+        model_cache = LocalModelCache()
+        if verbose_level > 0: 
+            print(f'init model cache')
     
     err_counter = 0
     for question in all_questions:
@@ -147,10 +166,10 @@ def eval_sheet(
                 meta = meta[0]['data']
             else:
                 meta = None
-            question_text = [
-                e for e in question['sub_sections'] 
-                if e['type'] == 'question'
-            ][0]['text']
+            question_section = [e for e in question['sub_sections'] if e['type'] == 'question'][0]
+            question_text = question_section['text']
+            question_usr = question_section['text_usr']
+            question_sys = question_section['text_sys']
             assert question is not None
             try:
                 ground_truth = [
@@ -168,10 +187,13 @@ def eval_sheet(
             print(f"Processing question: {name}")
         if verbose_level > 1:
             print(f"question: {question}")
-
+                
         completion, error = prompt_model(
             prompt=question_text,
             model_name=model_name,
+            prompt_sys=question_sys,
+            prompt_usr=question_usr,
+            model_cache=model_cache,
         )
         
         if (error is not None) and (verbose_level > 0): 
@@ -182,6 +204,8 @@ def eval_sheet(
             'meta_data': meta,
             'ground_truth': ground_truth,
             'question': question_text,
+            'question_usr': question_usr,
+            'question_sys': question_sys,
             'completion': completion,
             'error': error,
             'model_name': model_name,

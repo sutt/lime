@@ -151,6 +151,8 @@ def parse_markdown(
                     sheet_question = strip_end_token(sub_section['text'])
                     
                 elif section_type == 'question':
+                    sub_section['text_sys'] = sheet_question
+                    sub_section['text_usr'] = strip_end_token(sub_section['text'])
                     sub_section['text'] = (
                         sheet_question + strip_end_token(sub_section['text'])
                     )

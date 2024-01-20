@@ -63,6 +63,7 @@ def test_eval_basic_1():
                 '../data/md-schema.yaml',
                 'gpt-3.5-turbo',
                 'should-not-be-used.txt',
+                'should-not-be-used.json',
                 verbose_level=0,
             )
 
@@ -90,6 +91,7 @@ def test_eval_basic_2():
                 '../data/md-schema.yaml',
                 'llama_7b',
                 'should-not-be-used.txt',
+                'should-not-be-used.json',
                 verbose_level=0,
             )
 
