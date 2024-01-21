@@ -7,7 +7,7 @@ from modules.local_llm_api import LocalModel, LocalModelCache
 from modules.output import output_json, output_markdown
 
 
-gen_params = {
+openai_gen_params = {
     'max_tokens':200,
     'temperature':0.7,
 }
@@ -17,7 +17,8 @@ def prompt_model(
   model_name: str,
   prompt_sys: str = None,
   prompt_usr: str = None,
-  model_cache: Union[None, LocalModelCache] = None
+  model_cache: Union[None, LocalModelCache] = None,
+  verbose : int = 0,
 ):
     error = None
     if model_name.startswith('gpt'):
@@ -25,8 +26,8 @@ def prompt_model(
             completion = submit_prompt(
                 prompt=prompt,
                 model_name=model_name,
-                max_tokens=gen_params['max_tokens'],
-                temperature=gen_params['temperature'],
+                max_tokens=openai_gen_params['max_tokens'],
+                temperature=openai_gen_params['temperature'],
             )
             answer = get_completion(completion)
         except Exception as e:
@@ -42,7 +43,9 @@ def prompt_model(
                 model_cache.get(model_name, prompt_sys)
                 output = model_cache.eval_question(
                     prompt_usr,
+                    verbose=verbose,
                     # **gen_params,
+
                 )
                 answer = output.get('text')
             else:
@@ -112,7 +115,6 @@ def eval_sheet(
     output_json_fn: str,
     run_id: Union[None, str] = None,
     output_grade_fn: Union[None, str] = None,
-    tic: Union[None, float] = None,
     verbose_level: int = 0,
 ) -> list:
     
@@ -149,6 +151,7 @@ def eval_sheet(
 
     model_cache = None
     if not(model_name.startswith('gpt')):
+        # TODO - test the largest context required in this run
         model_cache = LocalModelCache()
         if verbose_level > 0: 
             print(f'init model cache')
@@ -194,6 +197,7 @@ def eval_sheet(
             prompt_sys=question_sys,
             prompt_usr=question_usr,
             model_cache=model_cache,
+            verbose=verbose_level,
         )
         
         if (error is not None) and (verbose_level > 0): 
@@ -207,16 +211,13 @@ def eval_sheet(
             'question_usr': question_usr,
             'question_sys': question_sys,
             'completion': completion,
-            'error': error,
+            'error': str(error) if error is not None else None,
             'model_name': model_name,
             'eval_time': time.time() - t0,
         })
 
         if verbose_level > 0: 
             print(f"complete in: {round(time.time() - t0, 1)}")
-        
-        if tic is not None:
-            time.sleep(tic)
 
     output['questions'] = output_questions
 
@@ -330,8 +331,6 @@ if __name__ == '__main__':
     else: 
         output_dir = input_dir
 
-    tic =  1.0
-
     verbose_level = args['verbose']
 
     if args['uuid_digits'] > 0:
@@ -345,7 +344,6 @@ if __name__ == '__main__':
     eval_args = {
         'input_schema_fn':input_schema_fn,
         'model_name':     model_name,
-        'tic':            tic,
         'verbose_level':  verbose_level,
         'run_id':         run_id,
         # TODO - add concat output boolean

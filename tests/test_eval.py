@@ -20,8 +20,6 @@ def load_chat_completion(fn: str) -> ChatCompletion:
 RESPONSE_STUB_FN = './data/stubs/completion.json'
 MODEL_RESPONSE_STUB = load_chat_completion(RESPONSE_STUB_FN)
 
-VALID_MODEL_PATH = '../../../data/llama-2-7b.Q4_K_M.gguf'
-
 
 def test_stub_loaded():
     '''test to make sure subsequent tests are valid'''

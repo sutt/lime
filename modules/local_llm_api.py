@@ -98,6 +98,21 @@ def wrap_prompt(
     if usr_prompt is not None:
         return f'''{usr_prompt} [/INST]'''
     
+def rename_llama_args(args: Dict) -> Dict:
+    '''
+        rename args to llama args
+    '''
+    arg_names = {
+        'temperature': 'temp',
+    }
+    new_args = {}
+    for k, v in args.items():
+        if k in arg_names:
+            new_args[arg_names[k]] = v
+        else:
+            new_args[k] = v
+    return new_args
+
 
 class LocalModel:
     '''
@@ -105,11 +120,15 @@ class LocalModel:
     '''
     
     @suppress_stderr
-    def __init__(self, model_name='llama_7b'):
+    def __init__(self, model_name: str, **params):
         
         self.init_params = {
             'n_threads': 4,
+            'n_ctx': 512,
         }
+        
+        init_params = {**self.init_params, **params}
+        
         self.generate_params = {
             'temperature': LocalParams.temperature,
             'max_tokens': LocalParams.max_tokens,
@@ -119,47 +138,48 @@ class LocalModel:
         
         self.llm : Llama = Llama(
             model_path=get_model_fn(model_name), 
-            **self.init_params,
+            **init_params
         )
 
         self.cached_state : LlamaState = None
 
     def __call__(self, prompt, **params):
         wrapped_prompt = wrap_prompt(prompt)
+        call_params = {**self.generate_params, **params}
         output = self.llm(
             prompt=wrapped_prompt, 
-            max_tokens=5,
-            # **self.generate_params,
-            
+            **call_params,
         )
         return output
     
-
     def eval_prompt(self, prompt):
+        # we're expecting this is a sys_prompt and thus
+        # only wrap the left side. The usr_prompt will follow
+        # and only be wrapped on the right side.
         wrapped_prompt = wrap_prompt(sys_prompt=prompt)
-        print(wrapped_prompt)
         tokenized_wrapped_prompt = self.llm.tokenize(wrapped_prompt.encode())
         self.llm.reset()
         self.llm.eval(tokenized_wrapped_prompt)  # **params_llm_eval
+
+    def tokenize(self):
+        pass
     
     @suppress_stderr
-    def save_state(self, ):
+    def save_state(self):
         self.cached_state = self.llm.save_state()
 
-    def load_state(self, ):
-        self.llm.reset()
+    def load_state(self):
         self.llm.load_state(self.cached_state)
         
-    
     def eval_question(
             self, 
             question_text: str, 
             seed: int = None, 
-            max_tokens: int = 50, 
+            max_tokens: int = LocalParams.max_tokens, 
             verbose: int = 0,
         ) -> Dict:
+        # usr_prompt: only wrap right side
         wrapped_text = wrap_prompt(usr_prompt=question_text)
-        print(wrapped_text)
         tokens_question = self.llm.tokenize(wrapped_text.encode())
         self.llm.eval(tokens_question)
         if seed is not None: 
@@ -197,7 +217,9 @@ class LocalModelCache:
     def __init__(self):
         self.model: LocalModel = None
         self.has_cache: bool = False
+        self.sys_prompt_tokens: int = 0
     def get(self, model_name:str, sys_prompt:str):
+        # TODO - re_init for larger context
         if self.model is None:
             self.model = LocalModel(model_name)
         if self.has_cache:
@@ -206,7 +228,11 @@ class LocalModelCache:
             self.model.eval_prompt(sys_prompt)
             self.model.save_state()
             self.has_cache = True
+            self.sys_prompt = sys_prompt
     def eval_question(self, question_text:str, **params):
+        # TODO - count tokens for n_ctx exapnsion
+        # total_tokens = 0 # sys_prompt
+        # total_tokens += params.get('max_tokens', 0)
         return self.model.eval_question(question_text, **params)
     def __call__(self, prompt: str):
         return self.model(prompt)
