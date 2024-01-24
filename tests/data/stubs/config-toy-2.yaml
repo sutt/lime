@@ -1,0 +1,16 @@
+Alpha:
+  item_a:
+    fn: 99
+  item_b:
+    example: 99
+  item_z:
+    fn: 99
+
+# No Beta
+
+Delta:
+  z: 99
+
+Gamma:
+  example: 99
+

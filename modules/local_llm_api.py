@@ -5,6 +5,9 @@ from contextlib import redirect_stderr
 from typing import (
     Dict,
 )
+from .models.state import (
+    ConfigLoader,
+)
 from llama_cpp import (
     Llama, 
     LlamaState,
@@ -13,22 +16,50 @@ from llama_cpp import (
 
 llama_log_obj = []
 
-class LocalParams:  #TODO- rename default
+class LocalParams(ConfigLoader):
     max_tokens = 50
     temperature = 0.0
-    # TODO - load from data/config
+
+LocalParams._initialize()
 
 
-class LocalModelFns:
-    llama_7b = '../../../data/llama-2-7b.Q4_K_M.gguf'
-    mistral_hf_7b = '../../../data/mistral-7b-instruct-v0.2.Q4_K_M.gguf'
-    # default_model_name = "llama_7b"
-    # TODO - load these from data
+class LocalModelFns(ConfigLoader):
+    _urn = {
+        'data': lambda config: config.get('LocalModels'),
+        'value': lambda data, key: data.get(key, {}).get('fn'),
+    }
+    llama_7b = None
+    mistral_hf_7b = None
+
+LocalModelFns._initialize()
+
+
+class LocalInference:
+    def _get_package_version(package_name: str) -> str:
+        try: return __import__(package_name).__version__
+        except: return 'unable to get version'
+    default_package = 'llama_cpp'
+    package_version = _get_package_version(default_package)
+
 
 class ChatTemplate:
-    full = None
+    template = '''{{{SYS}}}{{{USR}}}'''
+    default_templating_tag_left =  '''{{{'''
+    default_templating_tag_right = '''}}}'''
+    default_sys_tag = 'SYS'
+    default_usr_tag = 'USR'
     left = None
     right = None
+    
+    @classmethod
+    def wrap_prompt(
+            cls,
+            prompt: str = None,
+            sys_prompt: str = None,
+            usr_prompt: str = None,
+        ) -> str: 
+        pass
+
 
 class DefaultModelChatTemplates:
     llama_7b = {
@@ -39,14 +70,6 @@ class DefaultModelChatTemplates:
         'left': '',
         'right': '',
     }
-    @classmethod
-    def wrap_prompt(
-            cls,
-            prompt: str = None,
-            sys_prompt: str = None,
-            usr_prompt: str = None,
-        ): 
-        pass
 
 
 def suppress_stderr(func):
@@ -64,26 +87,22 @@ def my_log_callback(level, message, user_data):
 log_callback = ctypes.CFUNCTYPE(None, ctypes.c_int, 
             ctypes.c_char_p, ctypes.c_void_p)(my_log_callback)
 
-
-
-
-
 def get_model_fn(model_name: str) -> str:
     try:
-        return getattr(LocalModelFns, model_name)
-        # TODO check if model_fn exists
+        model_fn = getattr(LocalModelFns, model_name)
+        if not os.path.isfile(model_fn):
+            raise ValueError(f'{model_name} is found in LocalModels but path: {model_fn} is not a file')
+        return model_fn
     except AttributeError:
         if os.path.isfile(model_name):
             return model_name
         else:
             msg = f'model_name {model_name} is not a valid file'
-            msg += f'or list of LocalModelFns: {", ".join([""])}'
-            msg += '\nadd '
+            msg += f'or list of LocalModelFns: {", ".join(list(LocalModelFns._get_attrs().keys()))}'
             raise ValueError(msg)
     except Exception as e:
         raise ValueError(f'exception in get_model_fn: {e}')
         
-
 def wrap_prompt(
         prompt: str = None,
         sys_prompt: str = None,
@@ -196,6 +215,7 @@ class LocalModel:
                 print(_token, end='', flush=True)
             self.llm.eval([token])
             token = self.llm.sample() # **params_llm_sample
+        if verbose > 0: print(end='\n', flush=True)
         return {
             'text': completion,
             'completion_tokens': counter,
@@ -270,6 +290,13 @@ If there's not enough information to answer the question, then answer with "I do
         print(f'{time.time()-t0:.2f}')
         t0 = time.time()
 
+    # print(ConfigLoader.__loaded_configs)
+    # print(list(LocalModelFns._get_attrs().items()))
+    # print(list(LocalParams._get_attrs().items()))
+    
+    # import sys
+    # sys.exit()
+
     cache = LocalModelCache()
     cache.get('mistral_hf_7b', sys_prompt)
     mark()
@@ -291,18 +318,5 @@ If there's not enough information to answer the question, then answer with "I do
     d = cache.eval_question(usr_prompt)
     print(d.get('text'))
     mark()
-
-
-
-
-
-    # reset the obj and run
-    # cache = LocalModelCache()
-    # cache.get('mistral_hf_7b')
-    # mark()
-    # usr_prompt = 'What is the largest planet?'
-    # t = cache(sys_prompt + usr_prompt)
-    # print(LocalModel.get_completion(t))
-    # mark()
     
 
