@@ -38,9 +38,15 @@ class ConfigLoader:
         }
     @classmethod
     def __recursive_update(cls, original, updates):
+        if original is None:
+            return updates or {}
+        if updates is None:
+            return original or {}
         for key, value in updates.items():
             if isinstance(value, dict):
                 original[key] = cls.__recursive_update(original.get(key, {}), value)
+            elif value is None and isinstance(original.get(key), dict):
+                pass  # don't overwrite dict, but this doesnt apply to scalar
             else:
                 original[key] = value
         return original

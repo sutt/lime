@@ -2,7 +2,7 @@ import sys
 sys.path.append('../')
 import os, json, time
 from modules.parse import parse_wrapper
-from main import collect_input_sheets
+from eval import collect_input_sheets
 
 
 def test_section_parse_1():

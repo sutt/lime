@@ -2,7 +2,7 @@ import json
 import argparse
 from typing import Union
 from modules.parse import parse_wrapper
-from main import grade_array
+from eval import grade_array
 
 def do_grade_sheet(
         output_json_fp: str,

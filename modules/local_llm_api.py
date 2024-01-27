@@ -293,9 +293,11 @@ If there's not enough information to answer the question, then answer with "I do
     # print(ConfigLoader.__loaded_configs)
     # print(list(LocalModelFns._get_attrs().items()))
     # print(list(LocalParams._get_attrs().items()))
+    print(LocalParams._get_attrs())
+    print(LocalModelFns._get_attrs())
     
-    # import sys
-    # sys.exit()
+    import sys
+    sys.exit()
 
     cache = LocalModelCache()
     cache.get('mistral_hf_7b', sys_prompt)

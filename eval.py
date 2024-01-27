@@ -6,7 +6,6 @@ from modules.oai_api import submit_prompt, get_completion
 from modules.local_llm_api import LocalModel, LocalModelCache
 from modules.output import output_json, output_markdown
 
-
 openai_gen_params = {
     'max_tokens':200,
     'temperature':0.7,
@@ -271,22 +270,22 @@ def collect_input_sheets(
     return fns
 
 
-if __name__ == '__main__':
-
-    argparser = argparse.ArgumentParser()
+def setup_parser(parser):
     
     # One of these two required
-    argparser.add_argument('-f', '--sheet_fn',      type=str)
-    argparser.add_argument('-d', '--sheets_dir',    type=str)
+    parser.add_argument('-f', '--sheet_fn',      type=str)
+    parser.add_argument('-d', '--sheets_dir',    type=str)
     # Optional arguments
-    argparser.add_argument('-s', '--schema_fn',     type=str)
-    argparser.add_argument('-m', '--model_name',    type=str)
-    argparser.add_argument('-o', '--output_dir',    type=str)
-    argparser.add_argument('-y', '--dry_run',       action='store_true')
-    argparser.add_argument('-u', '--uuid_digits',   type=int, default=0)
-    argparser.add_argument('-v', '--verbose',       type=int, default=0)
+    parser.add_argument('-s', '--schema_fn',     type=str)
+    parser.add_argument('-m', '--model_name',    type=str)
+    parser.add_argument('-o', '--output_dir',    type=str)
+    parser.add_argument('-y', '--dry_run',       action='store_true')
+    parser.add_argument('-u', '--uuid_digits',   type=int, default=0)
+    parser.add_argument('-v', '--verbose',       type=int, default=0)
     
-    args = argparser.parse_args()
+
+def main(args):
+
     args = vars(args)
 
     # add defaults / override with cli args
@@ -357,6 +356,10 @@ if __name__ == '__main__':
         sheet_fns = collect_input_sheets(sheets_dir)
     else:
         sheet_fns = [sheet_fn]
+    
+    dry_run = False
+    if args['dry_run']:
+        dry_run = True
 
     for sheet_fn in sheet_fns:
         
@@ -371,10 +374,6 @@ if __name__ == '__main__':
         output_json_fn = output_dir + output_fn + '.json' 
 
         output_grade_fn = output_dir + f'grade{tmp_fn}-{model_name}{uuid_fn}.json'
-
-        dry_run = False
-        if args['dry_run']:
-            dry_run = True
 
         sheet_args = {
             'input_md_fn':    sheet_fn,

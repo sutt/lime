@@ -93,7 +93,6 @@ def test_toy_example_2():
         pass
     
 
-
 def test_toy_example_3():
     '''
         a toy config to demonstrate expected behavior:
@@ -142,3 +141,46 @@ def test_toy_example_3():
     except:
         pass
     
+def test_toy_example_4():
+    '''
+        bug check: when loading an empty section
+        that information is not overwritten
+    '''
+    ConfigLoader._load(config_usr_fn)
+    ConfigLoader._load(config_workspace_fn)
+
+    # Demonstrate not overwriting previous loaded values
+    class Epsilon(ConfigLoader):
+        predefined = 0
+
+    Epsilon._initialize()
+
+    # this is loaded in usr as Epsilon.epsilon
+    # but in workspace the key is absent, just
+    # the Epsilon tag is present with no sub_attr
+    # therefore the value should not be overwritten
+    assert Epsilon.epsilon == 2
+
+    # Demonstrate overwriting previous loaded values with null
+    class Gamma(ConfigLoader):
+        predefined = 0
+
+    # these are already called
+    # ConfigLoader._load(config_usr_fn)
+    # ConfigLoader._load(config_workspace_fn)
+
+    Gamma._initialize()
+
+    # this is loaded in usr as Gamma.gamma =2
+    # but in workspace the Gamma.gamma = null
+    # therefore the value should be overwritten
+    assert Gamma.gamma == None
+
+
+    
+
+
+
+
+
+
