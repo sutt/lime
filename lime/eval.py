@@ -6,6 +6,12 @@ from lime.modules.oai_api import submit_prompt, get_completion
 from lime.modules.local_llm_api import LocalModel, LocalModelCache
 from lime.modules.output import output_json, output_markdown
 from lime.modules.models.state import ConfigLoader
+from lime.modules.models.errs import (
+    BaseQuietError,
+    ReqArgMissingError,
+    FileNotFoundError,
+    NotADirectoryError,
+)
 
 openai_gen_params = {
     'max_tokens':200,
@@ -293,7 +299,10 @@ def collect_input_sheets(
 
 def setup_parser(parser):
     
-    # One of these two required
+    # optional input file/dir arg
+    parser.add_argument('input', nargs='?', default=None
+                        ,help='Input file or directory')
+    # If not above, one of these two required
     parser.add_argument('-f', '--sheet_fn',      type=str)
     parser.add_argument('-d', '--sheets_dir',    type=str)
     # Optional arguments, will overwrite config loaded defaults
@@ -311,24 +320,37 @@ def main(args):
 
     script_dir = os.path.dirname(os.path.abspath(__file__))
 
+    # Check if the positional argument 'input' is provided
+    input_path = args.get('input')
+    
+    if input_path:
+        if os.path.isfile(input_path):
+            args['sheet_fn'] = input_path
+        elif os.path.isdir(input_path):
+            args['sheets_dir'] = input_path
+        else:
+            raise BaseQuietError(f'Input path does not exist: {input_path}')
+
     # add defaults / override with cli args
     sheet_fn = args['sheet_fn']
     sheets_dir = args['sheets_dir']
 
     # validation
     if sheet_fn is None and sheets_dir is None:
-        raise Exception('-f/--sheet_fn or -d/--sheets_dir arg required')
+        raise ReqArgMissingError('input')
 
     if sheet_fn is not None and sheets_dir is not None:
-        raise Exception('cant use both -f/--sheet_fn or -d/--sheets_dir args')
+        raise BaseQuietError('cant use both -f/--sheet_fn or -d/--sheets_dir args')
         
     if sheet_fn is not None:
-        assert os.path.isfile(sheet_fn), f'file not found: {sheet_fn}'
+        if not os.path.isfile(sheet_fn):
+            raise FileNotFoundError(sheet_fn)
         input_dir = "./"
         sheet_fns = [sheet_fn]
         
     if sheets_dir is not None:
-        assert os.path.isdir(sheets_dir), f'dir not found: {sheets_dir}'
+        if not(os.path.isdir(sheets_dir)):
+            raise NotADirectoryError(sheets_dir)
         input_dir = sheets_dir
         if input_dir[-1] != '/':
             input_dir += '/'

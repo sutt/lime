@@ -11,60 +11,55 @@ This was built on a [Wordle dataset](https://github.com/sutt/wordle-qa-2) which 
 
 TODO - insert a diagram
 
-### Script Tools
+### Invoking Sub Commands
+
+Lime is a command line tool, with three main sub-commands: `eval`, `agg`, and `grade`. Each of these sub-commands has its own set of arguments and options. To see the full list of options for each sub-command, run `lime <sub-command> --help`.
 
 There are three main actions that can be taken with this tool:
 
- - `main.py`: run a specified model on a sheet, create an output
- - `grader.py`: update the grading and ground_truth of a sheet
- - `agg.py`: aggregate and compare the results of multiple model runs
+ - `lime eval`: run a specified model on a sheet or directory of sheets, create output(s).
+ - `lime agg`: aggregate and compare the results of model run(s).
+ - `lime grade`: update the grading and/or ground_truth of a sheet.
 
-Run the bash scripts in the `scripts/` directory from repo root (and supplementary windows batch files) as they require multiple arguments with path and filename specification.
-
-##### Run Models on Question Sheets - `./scripts/main.sh`:
-```bash
-python main.py \
-   -f ../wordle-qa-2/what-shows-up/input-wsu-1.md \  #input-sheet
-   # -d ../wordle-qa-2/what-shows-up \  # input-directory
-   -m gpt-4 \   # model name
-   -u 4 \  # number of uuid chars to generate
-   -j \    # json output
-   -v \  # verbose 
+##### Run Models on Question Sheets - `lime eval <input> [args]`:
 ```
+lime eval
+  [<input>]             # input-sheet or input-directory
+  [ -f <input_fn>]      # input-sheet
+  [ -d <input_dir>]     # input-directory
+  [ -m <model_name>]    # model name
+  [ -v <verbose_int>]   # verbose level
+```
+
 Run a specified model on a specified sheet (or directory of sheets) and create an output file in the directory of the input sheet. If a directory is specified as an input one, outputs file per input-sheet) and applies grading after processing the models.
 
-Can use `collect_results.sh` script here to move all output files into a single directory for aggregation.
-
-```bash
-destination_dir="_results"
-mkdir -p "$destination_dir"
-find . -type f -name "output*" -exec mv {} "$destination_dir" \;
-find . -type f -name "grade*" -exec mv {} "$destination_dir" \;
+##### Aggregate and Compare Model Runs - `lime agg <input_dir> [args]`:
 
 ```
-
-##### (Re)grade the output of a model run - `./scripts/grader.sh`:
-```bash
-python grader.py \
-   -o ../wordle-qa-2/results/output-wsu-1-gpt-3.5-turbo-4bd8.json \ # output file to grade/overwrite
-   -i ../wordle-qa-2/what-shows-up/input-wsu-1.md \  # optional input file
-   -v \   # verbose
-   -w \   # write changes; leave off for dry run
-   -l \   # "liberal grading" option
+lime agg
+  <input_dir>             # input-sheet or input-directory
+  [ -v <verbose_int>]     # verbose level
 ```
 
-Take as input (`-o`) an output file for update the grading field of each question there in. Optionaly, if specified with an input file to an input-sheet (`-i`) can update the ground_truth field of questions, when ground_truth is initially ill-specifed or needs to be updated.
+Generated summary tables of aggregation and comparison for all all output-*.json files found in the supplied input directory. Outputs this data as markdown format (from pandas) to stdout. Redirect stdout to a file to save the output, e.g. `lime agg ./data/outputs/ > ./data/outputs/agg-1.md`.
 
-##### Aggregate and Compare Model Runs - `./scripts/agg.sh`:
 
-```bash
-python agg.py \
-   -i ../wordle-qa-2/results \
-   -v 
-#  -o ../wordle-qa-2/results/agg-mysummary-1.md
+##### Grade (or re-grade) the output of a model run - `lime grade <output> [args]`:
+
+```
+lime grade
+  <output>              # output json file to grade
+  [-i <input_file.md>]  # input file to pull [updated] ground-truth from
+  [-w ]                 # write changes; leave off for dry run
+  [-v ]                 # verbose boolean
+  [-l ]                 # "liberal grading" option
 ```
 
-Generated summary tables of aggregation and comparison for all all output-*.json files found in the supplied input directory. Outputs this data as markdown format (from pandas) into an `agg-xxxx.md` file in the input directory (4 char uuid by default unless output filepath `-o` flag is specified).
+Take as required input a path to an output json file for update the grading field of each question there in. 
+
+Optionaly, if specified with an input file to an input-sheet (`-i`) can update the ground_truth field of questions, when ground_truth is initially ill-specifed or needs to be updated.
+
+By default this is a dry run, use the `-w` flag to write the changes to the output file.
 
 
 ### Outputs

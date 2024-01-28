@@ -1,14 +1,22 @@
 import os
 import json
 import pandas as pd
+from ..models.state import ConfigLoader
 
 MODEL_NAMES = ['gpt-3.5-turbo', 'gpt-4', 'llama_13b_chat']
 
 
+class DefaultSettings(ConfigLoader):
+    output_sheet_prefix = 'output'
+
+DefaultSettings._initialize()
+
 def get_json_result_fns(results_fp):
     results = os.listdir(results_fp)
     results = [r for r in results if r.endswith('.json')]
-    results = [r for r in results if r.startswith('output')]
+    results = [r for r in results 
+               if r.startswith(DefaultSettings.output_sheet_prefix)
+               ]
     return results
 
 

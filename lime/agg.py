@@ -1,7 +1,13 @@
 import os
+import sys
 import uuid
 import argparse
 from typing import Union
+from lime.modules.models.state import ConfigLoader
+from lime.modules.models.errs import (
+    ReqArgMissingError,
+    NotADirectoryError,
+)
 from lime.modules.agg.collect import (
     build_data
 )
@@ -13,16 +19,32 @@ from lime.modules.agg.query import (
     model_input_results,
 )
 
+class DefaultSettings(ConfigLoader):
+    output_sheet_prefix = None
+
+DefaultSettings._initialize()
+
+
 def do_aggregate(
     results_dir: str,
-    output_fp: Union[None, str] = None,
     verbose: bool = False,
 ):
-    data = build_data(results_dir)
-
+    try:
+        data = build_data(results_dir)
+    except:
+        num_files = len(os.listdir(results_dir))
+        msg =  'No output object files found in specified directory.\n'
+        msg += f'Found {num_files} files in {results_dir}'
+        if num_files > 0:
+            msg += f' but none with with output_sheet_prefix='
+            msg += f'{DefaultSettings.output_sheet_prefix} as prefix in filenname.'
+            msg += f'(This setting can be switched in config)'
+        print(msg, file=sys.stderr)
+        return
+    
     if verbose:
-        print(f'questions found: {data.shape[0]}')
-        print(f'unique sheets:   {data["input_name"].nunique()}')
+        print(f'questions found: {data.shape[0]}', file=sys.stderr)
+        print(f'unique sheets:   {data["input_name"].nunique()}', file=sys.stderr)
 
     output = ''
     
@@ -42,42 +64,31 @@ def do_aggregate(
         ).to_markdown(index=False)
     output += '\n\n'
 
-    if output_fp is None:
-        print('--dryrun enabled; printing to stdout...\n')
-        print(output)
-    else:
-        with open(output_fp, 'w') as f:
-            f.write(output)
-        if verbose:
-            print(f'wrote to {output_fp}')
-    
+    print(output)
+
     return
 
 
 def setup_parser(argparser):
 
-    argparser.add_argument('-i', '--input_dir',     type=str)
-    argparser.add_argument('-o', '--output_fp',     type=str)
+    argparser.add_argument('input_dir', nargs='?', default=None
+                          ,help='Input directory')
     argparser.add_argument('-v', '--verbose',       action='store_true')
-    argparser.add_argument('-d', '--dryrun',        action='store_true')
 
 
 def main(args):
+    
     args = vars(args)
 
-    input_dir = args['input_dir']
-    
+    input_dir = args.get('input_dir')
+
     if input_dir is None:
-        raise ValueError('-i / --input_dir is required')
+        raise ReqArgMissingError('input_dir')
     
-    output_dir = args['output_fp']
-    
-    if output_dir is None and not(args['dryrun']):
-        output_fn = f'agg-{uuid.uuid4().hex[:4]}.md'
-        output_dir = os.path.join(input_dir, output_fn)
+    if not(os.path.isdir(input_dir)):
+        raise NotADirectoryError(input_dir)
     
     do_aggregate(
         results_dir=input_dir,
-        output_fp=output_dir,
         verbose=args['verbose'],
     )

@@ -2,6 +2,10 @@ import os
 import json
 import argparse
 from typing import Union
+from lime.modules.models.errs import (
+    ReqArgMissingError,
+    FileNotFoundError,
+)
 from lime.modules.parse import parse_wrapper
 from lime.eval import grade_array
 
@@ -66,9 +70,9 @@ def do_grade_sheet(
         liberal_grading=liberal_grading,
     )
 
-    if verbose:
-        print(f'orig_grades:   {output_question_grades}')
-        print(f'new_grades:    {new_grades}')
+    
+    print(f'orig_grades:   {output_question_grades}')
+    print(f'new_grades:    {new_grades}')
 
     # overwrite/create the output file and grade file if specified
     if not(overwrite):
@@ -97,7 +101,9 @@ def do_grade_sheet(
 
 def setup_parser(argparser):
 
-    argparser.add_argument('-o', '--output_fp',     type=str)
+    argparser.add_argument('output_fp', nargs='?', default=None
+                          ,help='the output json file to grade')
+
     argparser.add_argument('-i', '--input_fp',      type=str)
     argparser.add_argument('-w', '--overwrite',     action='store_true')
     argparser.add_argument('-v', '--verbose',       action='store_true')
@@ -108,10 +114,13 @@ def main(args):
     
     args = vars(args)
 
-    output_json_fp = args['output_fp']
+    output_json_fp = args.get('output_fp')
     
     if output_json_fp is None:
-        raise ValueError('-o / --output_fn is required')
+        raise ReqArgMissingError('output_fp')
+    
+    if not(os.path.isfile(output_json_fp)):
+        raise FileNotFoundError(output_json_fp)
 
     grades = do_grade_sheet(
         output_json_fp=output_json_fp,
