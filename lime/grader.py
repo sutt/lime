@@ -1,13 +1,16 @@
+import os
 import json
 import argparse
 from typing import Union
-from modules.parse import parse_wrapper
-from eval import grade_array
+from lime.modules.parse import parse_wrapper
+from lime.eval import grade_array
+
+script_dir = os.path.dirname(os.path.abspath(__file__))
 
 def do_grade_sheet(
         output_json_fp: str,
         input_md_fp: Union[None, str] = None,
-        input_schema_fp: str = 'data/md-schema.yaml',
+        input_schema_fp: str = os.path.join(script_dir, 'data', 'md-schema.yaml'),
         overwrite: bool = False,
         verbose: bool = False,
         liberal_grading: bool = False,
@@ -92,15 +95,17 @@ def do_grade_sheet(
     return new_grades
 
 
-if __name__ == '__main__':
+def setup_parser(argparser):
 
-    argparser = argparse.ArgumentParser()
     argparser.add_argument('-o', '--output_fp',     type=str)
     argparser.add_argument('-i', '--input_fp',      type=str)
     argparser.add_argument('-w', '--overwrite',     action='store_true')
     argparser.add_argument('-v', '--verbose',       action='store_true')
     argparser.add_argument('-l', '--liberal_grading', action='store_true')
-    args = argparser.parse_args()
+
+
+def main(args):
+    
     args = vars(args)
 
     output_json_fp = args['output_fp']

@@ -1,15 +1,36 @@
 import os, sys, time, json, argparse, uuid
-from typing import Union
-from modules.parse import parse_wrapper
-from modules.grading import fuzzier_match
-from modules.oai_api import submit_prompt, get_completion
-from modules.local_llm_api import LocalModel, LocalModelCache
-from modules.output import output_json, output_markdown
+from typing import Union, Any
+from lime.modules.parse import parse_wrapper
+from lime.modules.grading import fuzzier_match
+from lime.modules.oai_api import submit_prompt, get_completion
+from lime.modules.local_llm_api import LocalModel, LocalModelCache
+from lime.modules.output import output_json, output_markdown
+from lime.modules.models.state import ConfigLoader
 
 openai_gen_params = {
     'max_tokens':200,
     'temperature':0.7,
 }
+
+class ExecSettings(ConfigLoader):
+    verbose = 1
+    uuid_digits = 4
+    model_name = 'gpt-3.5-turbo'
+    input_sheet_prefix = 'input'
+    output_sheet_prefix = 'output'
+    use_prompt_caching = True
+
+ExecSettings._initialize()
+
+def get_setting(args: dict, key: str, default: Any = None):
+    if args.get(key) is not None:
+        return args[key]
+    else:
+        try: 
+            return getattr(ExecSettings, key)
+        except Exception as e: 
+            return default
+
 
 def prompt_model(
   prompt: str,
@@ -275,18 +296,20 @@ def setup_parser(parser):
     # One of these two required
     parser.add_argument('-f', '--sheet_fn',      type=str)
     parser.add_argument('-d', '--sheets_dir',    type=str)
-    # Optional arguments
+    # Optional arguments, will overwrite config loaded defaults
     parser.add_argument('-s', '--schema_fn',     type=str)
     parser.add_argument('-m', '--model_name',    type=str)
     parser.add_argument('-o', '--output_dir',    type=str)
     parser.add_argument('-y', '--dry_run',       action='store_true')
-    parser.add_argument('-u', '--uuid_digits',   type=int, default=0)
-    parser.add_argument('-v', '--verbose',       type=int, default=0)
+    parser.add_argument('-u', '--uuid_digits',   type=int)
+    parser.add_argument('-v', '--verbose',       type=int)
     
 
 def main(args):
 
     args = vars(args)
+
+    script_dir = os.path.dirname(os.path.abspath(__file__))
 
     # add defaults / override with cli args
     sheet_fn = args['sheet_fn']
@@ -301,16 +324,15 @@ def main(args):
         
     if sheet_fn is not None:
         assert os.path.isfile(sheet_fn), f'file not found: {sheet_fn}'
+        input_dir = "./"
+        sheet_fns = [sheet_fn]
         
     if sheets_dir is not None:
         assert os.path.isdir(sheets_dir), f'dir not found: {sheets_dir}'
-
-    if sheet_fn is not None:
-        input_dir = os.path.dirname(sheet_fn) + '/'
-    elif sheets_dir is not None:
         input_dir = sheets_dir
         if input_dir[-1] != '/':
             input_dir += '/'
+        sheet_fns = collect_input_sheets(sheets_dir)
 
     # defaults / cli parsing
     if args['schema_fn'] is not None:
@@ -318,22 +340,19 @@ def main(args):
     elif os.listdir(input_dir).count('md-schema.yaml') > 0:
         input_schema_fn = input_dir + 'md-schema.yaml'
     else:
-        input_schema_fn = './data/md-schema.yaml'
+        input_schema_fn = os.path.join(script_dir, 'data', 'md-schema.yaml')
 
-    if args['model_name']:
-        model_name = args['model_name']
-    else:
-        model_name = 'gpt-3.5-turbo'
+    model_name = get_setting(args, 'model_name')
 
     if args['output_dir'] is not None:
         output_dir = args['output_dir']
     else: 
         output_dir = input_dir
 
-    verbose_level = args['verbose']
-
-    if args['uuid_digits'] > 0:
-        run_id = uuid.uuid4().hex[:args["uuid_digits"]]
+    verbose_level =  get_setting(args, 'verbose')
+ 
+    if get_setting(args, 'uuid_digits') > 0:
+        run_id = uuid.uuid4().hex[:get_setting(args, 'uuid_digits')]
         uuid_fn = f'-{run_id}'
     else:
         run_id = None
@@ -345,22 +364,15 @@ def main(args):
         'model_name':     model_name,
         'verbose_level':  verbose_level,
         'run_id':         run_id,
-        # TODO - add concat output boolean
     }
-    
+        
+    dry_run = get_setting(args, 'dry_run', default=False)
+
     if verbose_level > 0: 
         print('starting eval script...')
         print(json.dumps(eval_args, indent=4))
 
-    if sheets_dir is not None:
-        sheet_fns = collect_input_sheets(sheets_dir)
-    else:
-        sheet_fns = [sheet_fn]
-    
-    dry_run = False
-    if args['dry_run']:
-        dry_run = True
-
+    # main loop
     for sheet_fn in sheet_fns:
         
         tmp_fn = sheet_fn.replace(input_dir, '')

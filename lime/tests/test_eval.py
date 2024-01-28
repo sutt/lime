@@ -60,7 +60,7 @@ def test_eval_basic_1():
          - submit_prompt
     '''
     
-    with mock.patch('modules.output.open',  mock.mock_open()) as mock_output_file:
+    with mock.patch('lime.modules.output.open',  mock.mock_open()) as mock_output_file:
         with mock.patch('eval.submit_prompt') as mock_submit_prompt:
             
             mock_submit_prompt.return_value = MODEL_RESPONSE_STUB
@@ -88,7 +88,7 @@ def test_eval_basic_2():
         test with local model: llama_7b
     '''
     
-    with mock.patch('modules.output.open',  mock.mock_open()) as mock_output_file:
+    with mock.patch('lime.modules.output.open',  mock.mock_open()) as mock_output_file:
         with mock.patch('eval.prompt_model') as mock_prompt_model:
             
             mock_prompt_model.return_value = ("stubbed answer", None)

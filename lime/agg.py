@@ -2,10 +2,10 @@ import os
 import uuid
 import argparse
 from typing import Union
-from modules.agg.collect import (
+from lime.modules.agg.collect import (
     build_data
 )
-from modules.agg.query import (
+from lime.modules.agg.query import (
     format_multi_index,
     input_by_model,
     all_sheets_all_questions,
@@ -54,16 +54,15 @@ def do_aggregate(
     return
 
 
+def setup_parser(argparser):
 
-
-if __name__ == '__main__':
-
-    argparser = argparse.ArgumentParser()
     argparser.add_argument('-i', '--input_dir',     type=str)
     argparser.add_argument('-o', '--output_fp',     type=str)
     argparser.add_argument('-v', '--verbose',       action='store_true')
     argparser.add_argument('-d', '--dryrun',        action='store_true')
-    args = argparser.parse_args()
+
+
+def main(args):
     args = vars(args)
 
     input_dir = args['input_dir']
