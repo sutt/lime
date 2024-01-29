@@ -13,10 +13,6 @@ from lime.modules.models.errs import (
     NotADirectoryError,
 )
 
-openai_gen_params = {
-    'max_tokens':200,
-    'temperature':0.7,
-}
 
 class ExecSettings(ConfigLoader):
     verbose = 1
@@ -52,8 +48,6 @@ def prompt_model(
             completion = submit_prompt(
                 prompt=prompt,
                 model_name=model_name,
-                max_tokens=openai_gen_params['max_tokens'],
-                temperature=openai_gen_params['temperature'],
             )
             answer = get_completion(completion)
         except Exception as e:
@@ -311,7 +305,7 @@ def setup_parser(parser):
     parser.add_argument('-o', '--output_dir',    type=str)
     parser.add_argument('-y', '--dry_run',       action='store_true')
     parser.add_argument('-u', '--uuid_digits',   type=int)
-    parser.add_argument('-v', '--verbose',       type=int)
+    parser.add_argument('-v', '--verbose',       action='count', default=0)
     
 
 def main(args):

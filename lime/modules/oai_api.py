@@ -1,4 +1,13 @@
 from openai import OpenAI
+from .models.state import (
+    ConfigLoader,
+)
+
+class LocalParams(ConfigLoader):
+    max_tokens = 50
+    temperature = 0.0
+
+LocalParams._initialize()
 
 env_key = None
 try:
@@ -15,8 +24,8 @@ except:
 def submit_prompt(
     prompt: str,
     model_name: str,
-    max_tokens: int = 60,
-    temperature: float = 0.7,
+    max_tokens: int = LocalParams.max_tokens,
+    temperature: float = LocalParams.temperature,
 ) -> dict:
 
     client = OpenAI(

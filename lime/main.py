@@ -2,6 +2,7 @@ import argparse
 import lime.eval as eval
 import lime.grader as grade
 import lime.agg as agg
+import lime.init as init
 
 def main():
     '''
@@ -9,7 +10,7 @@ def main():
     '''
     
     parser = argparse.ArgumentParser(prog='lime')
-    subparsers = parser.add_subparsers(dest='command', ) # TODO - add options here
+    subparsers = parser.add_subparsers(dest='command')
 
     # Subcommand: eval
     eval_parser = subparsers.add_parser('eval')
@@ -25,6 +26,11 @@ def main():
     grade_parser = subparsers.add_parser('grade')
     grade.setup_parser(grade_parser)
     grade_parser.set_defaults(func=grade.main)
+
+    # Subcommand: init
+    init_parser = subparsers.add_parser('init')
+    init.setup_parser(init_parser)
+    init_parser.set_defaults(func=init.main)
 
     # Invoke subcommand
     args = parser.parse_args()

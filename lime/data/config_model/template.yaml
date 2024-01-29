@@ -1,0 +1,19 @@
+# LIME config file, generated with lime init command
+# template lime v0.1 config:
+
+LocalModels:
+  my_llama:
+    fn: 'path/to/weights'
+  
+LocalParams:
+  temperature: 0.0
+  max_tokens: 200
+  seed: null
+  default_model: 'gpt-3.5-turbo'
+
+DefaultSettings:
+  verbose: 1
+  uuid_digits: 4
+  input_sheet_prefix: 'input'
+  output_sheet_prefix: 'output'
+  use_prompt_caching: True

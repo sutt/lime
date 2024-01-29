@@ -125,7 +125,7 @@ def test_eval_grading():
     # A) capture the output_obj of a run
     # setting grading output to None to prevent output_obj from containing 
     # a graded section
-    with mock.patch('modules.output.open',  mock.mock_open()) as mock_output_file:
+    with mock.patch('lime.modules.output.open',  mock.mock_open()) as mock_output_file:
         with mock.patch('eval.prompt_model') as mock_prompt_model:
             
             mock_prompt_model.return_value = ('C) The worm', None)        
