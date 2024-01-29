@@ -3,6 +3,7 @@ import lime.eval as eval
 import lime.grader as grade
 import lime.agg as agg
 import lime.init as init
+import lime.check as check
 
 def main():
     '''
@@ -31,6 +32,11 @@ def main():
     init_parser = subparsers.add_parser('init')
     init.setup_parser(init_parser)
     init_parser.set_defaults(func=init.main)
+
+    # Subcommand: check
+    check_parser = subparsers.add_parser('check')
+    check.setup_parser(check_parser)
+    check_parser.set_defaults(func=check.main)
 
     # Invoke subcommand
     args = parser.parse_args()

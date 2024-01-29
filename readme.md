@@ -21,6 +21,11 @@ There are three main actions that can be taken with this tool:
  - `lime agg`: aggregate and compare the results of model run(s).
  - `lime grade`: update the grading and/or ground_truth of a sheet.
 
+In addition there are supplementary commands:
+
+  - `lime init`: create a template config or an example dataset.
+  - `lime check`: print info on version, parameters, configs, secrets, etc.
+
 ##### Run Models on Question Sheets - `lime eval <input> [args]`:
 ```
 lime eval
@@ -61,6 +66,47 @@ Optionaly, if specified with an input file to an input-sheet (`-i`) can update t
 
 By default this is a dry run, use the `-w` flag to write the changes to the output file.
 
+##### Init Config or sample Dataset - `lime init <init_type> [args]`:
+
+```
+lime init
+  <init_type>           # `config` or `dataset`
+  [ --usr ]             # create config in home directory
+  [ --simple]           # create `simple` dataset
+```
+
+Will add files of a template:
+ - **`config`:** as `.lime/config.yaml` to current working directory, unless specified with `--usr` flag in which case writes to the home directory along with `secrets.env` file for holding api keys.
+ - **`dataset`:** several files representing input sheets which can be used to test the tool. Currently the only option is `--simple` of two sheets with two questions.
+
+##### Check Versions, Config, etc - `lime check [args]`:
+
+```
+lime check
+  [ --dataset ]   # NotImplented - should check which datasets are available.
+```
+
+Collect and print information about current versions, config, secrets, etc. Useful for seeing if tool is configured appropriately:
+ - Current working directory loads what settings via workspace config file.
+ - Which local models, and api's are available.
+
+### Quickstart
+
+Setup up the package:
+```bash
+git clone https://github.com/sutt/lime
+cd lime
+pip install -e .
+```
+
+### Hello World
+
+```bash
+lime init dataset --simple
+set OPENAI_API_KEY=sk-...
+lime eval .
+lime agg . > agg-1.md
+```
 
 ### Outputs
 

@@ -54,6 +54,19 @@ def config_init(
     with open(write_fn, 'w') as f:
         f.write(template)
 
+    if config_type == 'usr':
+        
+        place = os.path.join(write_dir, config_dir)
+        
+        fn = os.path.join(place, '.gitignore')
+        contents = 'secrets.env\n'
+        with open(fn, 'w') as f:
+            f.write(contents)
+
+        fn = os.path.join(place, 'secrets.env')
+        contents = '#OPENAI_API_KEY=sk...\n'
+        with open(fn, 'w') as f:
+            f.write(contents)
 
 def dataset_init(
         dataset_type: str = 'simple',

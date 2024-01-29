@@ -26,9 +26,10 @@ def get_workspace_config_dir():
     '''
     try:
         cwd = os.getcwd()
-        while cwd != '/': # TODO - windows support + only go back to home
+        while cwd != os.path.expanduser('~'):
             if os.path.exists(os.path.join(cwd, CONFIG_DIR_NAME)):
                 return os.path.join(cwd, CONFIG_DIR_NAME)
             cwd = os.path.dirname(cwd)
     except Exception as e:
         return None
+    return None

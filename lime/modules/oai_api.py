@@ -1,6 +1,12 @@
-from openai import OpenAI
+import os
+from dotenv import load_dotenv
+from openai import (
+    OpenAI, 
+    AuthenticationError,
+)
 from .models.state import (
     ConfigLoader,
+    Secrets,
 )
 
 class LocalParams(ConfigLoader):
@@ -9,17 +15,18 @@ class LocalParams(ConfigLoader):
 
 LocalParams._initialize()
 
-env_key = None
-try:
-    with open('/home/wsutt/.openai-key.txt', 'r') as f:
-        env_key = f.read().strip()
-except:
-    from dotenv import load_dotenv
-    import os
-    load_dotenv()
-    env_key = os.environ.get('OPENAI_API_KEY', None)
-    assert env_key is not None, 'no env key found'
+module_api_key = Secrets.get('OPENAI_API_KEY')
 
+def check_key_is_valid() -> bool:
+    client = OpenAI(api_key=module_api_key)
+    try:
+        client.models.list()
+        return True
+    except AuthenticationError:
+        return False
+    except Exception as e:
+        print(f'error in check_key_is_valid: {str(e)}')
+        return False
 
 def submit_prompt(
     prompt: str,
@@ -29,7 +36,7 @@ def submit_prompt(
 ) -> dict:
 
     client = OpenAI(
-        api_key=env_key,
+        api_key=module_api_key,
     )
 
     chat_completion = client.chat.completions.create(

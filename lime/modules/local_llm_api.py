@@ -34,7 +34,7 @@ class LocalModelFns(ConfigLoader):
 LocalModelFns._initialize()
 
 
-class LocalInference:
+class CppInference:
     def _get_package_version(package_name: str) -> str:
         try: return __import__(package_name).__version__
         except: return 'unable to get version'
