@@ -2,7 +2,7 @@ import os, sys, json, time
 from unittest import mock
 sys.path.append('../')
 
-from modules.local_llm_api import LocalModel
+from modules.inference.local_cpp import LocalModel
 
 def test_wrap_prompt():
     

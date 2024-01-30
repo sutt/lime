@@ -4,8 +4,8 @@ sys.path.append('../')
 
 from eval import eval_sheet, grade_sheet
 from modules.parse import parse_wrapper
-from modules.oai_api import get_completion
-from modules.local_llm_api import get_model_fn
+from modules.inference.oai_api import get_completion
+from modules.inference.local_cpp import get_model_fn
 from openai.types.chat import ChatCompletion
 
 def load_chat_completion(fn: str) -> ChatCompletion:
@@ -61,7 +61,7 @@ def test_eval_basic_1():
     '''
     
     with mock.patch('lime.modules.output.open',  mock.mock_open()) as mock_output_file:
-        with mock.patch('eval.submit_prompt') as mock_submit_prompt:
+        with mock.patch('lime.modules.inference.interface.submit_prompt') as mock_submit_prompt:
             
             mock_submit_prompt.return_value = MODEL_RESPONSE_STUB
             

@@ -3,7 +3,7 @@ import os, sys, json, time
 from unittest import mock
 sys.path.append('../')
 
-from lime.modules.local_llm_api import LocalModel, LocalModelCache
+from lime.modules.inference.local_cpp import LocalModel, LocalModelCache
 from lime.modules.models.utils import get_usr_config_dir
 from lime.modules.models.state import ConfigLoader
 

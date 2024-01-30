@@ -13,10 +13,10 @@ from lime.modules.models.utils import (
     get_usr_config_dir,
     get_workspace_config_dir,
 )
-from lime.modules.oai_api import (
+from lime.modules.inference.oai_api import (
     check_key_is_valid
 )
-from lime.modules.local_llm_api import (
+from lime.modules.inference.local_cpp import (
     LocalParams,
     LocalModelFns,
     CppInference,

@@ -4,7 +4,7 @@ from openai import (
     OpenAI, 
     AuthenticationError,
 )
-from .models.state import (
+from ..models.state import (
     ConfigLoader,
     Secrets,
 )

@@ -5,7 +5,7 @@ from contextlib import redirect_stderr
 from typing import (
     Dict,
 )
-from .models.state import (
+from ..models.state import (
     ConfigLoader,
 )
 try:

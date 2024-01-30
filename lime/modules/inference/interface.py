@@ -1,10 +1,9 @@
 from typing import Union, Any
-
-from lime.modules.oai_api import (
+from .oai_api import (
     submit_prompt, 
     get_completion,
 )
-from lime.modules.local_llm_api import (
+from .local_cpp import (
     LocalModel,
     LocalModelCache,
     llama_cpp_loaded,
