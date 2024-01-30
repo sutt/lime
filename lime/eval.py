@@ -2,8 +2,10 @@ import os, sys, time, json, argparse, uuid
 from typing import Union, Any
 from lime.modules.parse import parse_wrapper
 from lime.modules.grading import fuzzier_match
-from lime.modules.oai_api import submit_prompt, get_completion
-from lime.modules.local_llm_api import LocalModel, LocalModelCache
+from lime.modules.inference.interface import (
+    prompt_model,
+    ModelCacheFactory,
+)
 from lime.modules.output import output_json, output_markdown
 from lime.modules.models.state import ConfigLoader
 from lime.modules.models.errs import (
@@ -24,6 +26,7 @@ class ExecSettings(ConfigLoader):
 
 ExecSettings._initialize()
 
+
 def get_setting(args: dict, key: str, default: Any = None):
     if args.get(key) is not None:
         return args[key]
@@ -32,51 +35,6 @@ def get_setting(args: dict, key: str, default: Any = None):
             return getattr(ExecSettings, key)
         except Exception as e: 
             return default
-
-
-def prompt_model(
-  prompt: str,
-  model_name: str,
-  prompt_sys: str = None,
-  prompt_usr: str = None,
-  model_cache: Union[None, LocalModelCache] = None,
-  verbose : int = 0,
-):
-    error = None
-    if model_name.startswith('gpt'):
-        try:
-            completion = submit_prompt(
-                prompt=prompt,
-                model_name=model_name,
-            )
-            answer = get_completion(completion)
-        except Exception as e:
-            error = e
-            answer = None
-
-    else:        
-        try:
-            if ((model_cache is not None) and
-                (prompt_sys is not None) and 
-                (prompt_usr is not None)
-                ):
-                model_cache.get(model_name, prompt_sys)
-                output = model_cache.eval_question(
-                    prompt_usr,
-                    verbose=verbose,
-                    # **gen_params,
-
-                )
-                answer = output.get('text')
-            else:
-                model = LocalModel(model_name)
-                output = model(prompt)
-                answer = LocalModel.get_completion(output)
-        except Exception as e:
-            error = e
-            answer = None
-
-    return answer, error
 
 def grade_sheet(
     json_doc: list,
@@ -126,7 +84,6 @@ def grade_array(
     return grades
 
 
-
 def eval_sheet(
     input_md_fn: str,
     input_schema_fn: str,
@@ -169,12 +126,10 @@ def eval_sheet(
     
     if verbose_level > 0: print(f"Found {len(all_questions)} questions")
 
-    model_cache = None
-    if not(model_name.startswith('gpt')):
-        # TODO - test the largest context required in this run
-        model_cache = LocalModelCache()
-        if verbose_level > 0: 
-            print(f'init model cache')
+    # hack for now
+    model_cache = ModelCacheFactory(
+        b_init=not(model_name.startswith('gpt'))
+    )
     
     err_counter = 0
     for question in all_questions:
@@ -216,7 +171,7 @@ def eval_sheet(
             model_name=model_name,
             prompt_sys=question_sys,
             prompt_usr=question_usr,
-            model_cache=model_cache,
+            model_cache=model_cache.get(),
             verbose=verbose_level,
         )
         

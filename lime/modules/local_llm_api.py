@@ -8,11 +8,16 @@ from typing import (
 from .models.state import (
     ConfigLoader,
 )
-from llama_cpp import (
-    Llama, 
-    LlamaState,
-    llama_log_set, 
-)
+try:
+    from llama_cpp import (
+        Llama, 
+        LlamaState,
+        llama_log_set, 
+    )
+    llama_cpp_loaded = True
+except ImportError:
+    llama_cpp_loaded = False
+
 
 llama_log_obj = []
 

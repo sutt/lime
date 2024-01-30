@@ -33,8 +33,10 @@ def get_settings(obj) -> Dict:
 def fmt_grid(d: Dict, n_chars: int = 20) -> str:
     s = ''
     for k,v in d.items():
+        if not isinstance(v, str): continue
         row =  '{:<{n_chars}}'.format(k, n_chars=n_chars)
         row += ': '
+        v = 'null' if v is None else v
         row += '{:<{n_chars}}'.format(v, n_chars=n_chars)
         row += '\n'
         s += row
