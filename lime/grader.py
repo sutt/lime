@@ -6,8 +6,8 @@ from lime.modules.models.errs import (
     ReqArgMissingError,
     FileNotFoundError,
 )
-from lime.modules.parse import parse_wrapper
-from lime.eval import grade_array
+from lime.modules.controllers.parse import parse_wrapper
+from lime.modules.grading.base import grade_array
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 

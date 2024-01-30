@@ -1,7 +1,7 @@
 import os
 import json
 import pandas as pd
-from ..models.state import ConfigLoader
+from ...models.state import ConfigLoader
 
 MODEL_NAMES = ['gpt-3.5-turbo', 'gpt-4', 'llama_13b_chat']
 

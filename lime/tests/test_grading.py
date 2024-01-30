@@ -2,7 +2,7 @@ import os, sys, json, time
 from unittest import mock
 sys.path.append('../')
 
-from modules.grading import fuzzier_match
+from lime.modules.grading.fuzzy import fuzzier_match
 
 def test_fuzzier_match_1():
     '''

@@ -8,10 +8,10 @@ from lime.modules.models.errs import (
     ReqArgMissingError,
     NotADirectoryError,
 )
-from lime.modules.agg.collect import (
+from lime.modules.views.agg.collect import (
     build_data
 )
-from lime.modules.agg.query import (
+from lime.modules.views.agg.query import (
     format_multi_index,
     input_by_model,
     all_sheets_all_questions,
