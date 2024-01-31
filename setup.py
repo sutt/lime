@@ -10,6 +10,7 @@ setup(
     install_requires=[
         'PyYAML',
         'python-dotenv',
+        'pydantic',
         'pandas',
         'tabulate',
         'openai',

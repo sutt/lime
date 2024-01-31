@@ -37,8 +37,8 @@ def all_sheets_all_questions(data):
 def sheet_by_model_pct_correct(data):
     tmp = (
         data.groupby(['input_name', 'model_name'])
-        .agg({'name': 'count', 'grade': 'mean'}) 
-        .rename(columns={'name': 'num_questions', 'grade': 'pct_correct'})
+        .agg({'name': 'count', 'grade_bool': 'mean'}) 
+        .rename(columns={'name': 'num_questions', 'grade_bool': 'pct_correct'})
         .sort_values(['input_name', 'pct_correct'], ascending=False)
     )
     tmp['pct_correct'] = (

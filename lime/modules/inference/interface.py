@@ -18,18 +18,17 @@ class ModelCacheFactory:
         return self.instance
 
 def prompt_model(
-  prompt: str,
-  model_name: str,
-  prompt_sys: str = None,
-  prompt_usr: str = None,
-  model_cache: Union[None, LocalModelCache] = None,
-  verbose : int = 0,
+    model_name: str,
+    prompt_sys: str = None,
+    prompt_usr: str = None,
+    model_cache: Union[None, LocalModelCache] = None,
+    verbose : int = 0,
 ):
     error = None
     if model_name.startswith('gpt'):
         try:
             completion = submit_prompt(
-                prompt=prompt,
+                prompt=(prompt_sys or '') + prompt_usr,
                 model_name=model_name,
             )
             answer = get_completion(completion)
@@ -52,9 +51,8 @@ def prompt_model(
                 )
                 answer = output.get('text')
             else:
-                print("CACHE NOT FOUND!")
                 model = LocalModel(model_name)
-                output = model(prompt)
+                output = model((prompt_sys or '') + prompt_usr)
                 answer = LocalModel.get_completion(output)
         except Exception as e:
             error = e

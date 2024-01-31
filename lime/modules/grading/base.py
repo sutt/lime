@@ -1,3 +1,8 @@
+from typing import List, Dict, Any
+from lime.modules.models.internal import (
+    QuestionOutput,
+    GradingOutput,
+)
 from .fuzzy import (
     fuzzier_match,
 )
@@ -49,3 +54,24 @@ def grade_array(
 
     return grades
 
+def grade_answer(
+    completion: str,
+    ground_truth: str,
+) -> GradingOutput: 
+    grade_bool = None
+    error = None
+    if ( (completion is not None) and 
+         (ground_truth is not None)
+        ):
+        try:
+            grade_bool = fuzzier_match(
+                ground_truth=ground_truth, 
+                completion=completion,
+            )
+        except Exception as e:
+            error = str(e)
+    return GradingOutput(
+        grade_style='fuzzy',
+        grade_bool=grade_bool,
+        grade_error=error,
+    )

@@ -21,6 +21,7 @@ def get_json_result_fns(results_fp):
 
 
 def parse_sheet_meta(result_fn):
+    '''currently deprecated and not used'''
 
     result_fn = result_fn.lower()
     result_fn = result_fn[:result_fn.find('.json')]
@@ -43,15 +44,30 @@ def parse_sheet_meta(result_fn):
         'run_id':       run_id,
     }
 
+def expand_object(
+    data: pd.DataFrame, 
+    column: str, 
+    drop_original: bool = True,
+    ) -> pd.DataFrame:
+    try:
+        expanded = data[column].apply(pd.Series)
+        if drop_original:
+            data = data.drop([column], axis=1)
+        return pd.concat([data, expanded], axis=1)
+    except Exception as e:
+        print(f'Error expanding {column}: {e}')
+        return data
+
 
 def sheet_table_info(result_fn, results_fp):
     with open(os.path.join(results_fp, result_fn)) as f:
         data = json.load(f)
-        sheet_data = data['sheet']
+    header_data = data.get('header')
     return {
-        'input_name':   sheet_data.get('name'), 
-        'model_name':   sheet_data.get('model_name'), 
-        'run_id':       sheet_data.get('run_id'),
+        'input_name':   header_data.get('sheet_name'), 
+        'input_fn':     header_data.get('sheet_fn'), 
+        'model_name':   header_data.get('name_model'), 
+        'run_id':       header_data.get('run_id'),
     }
 
 
@@ -63,6 +79,7 @@ def question_table(result_fn, results_fp):
 
 def build_full_table(results_fp, result_fn):
     q_tbl = question_table(result_fn, results_fp)
+    q_tbl = expand_object(q_tbl, 'grading')
     tbl_info = sheet_table_info(result_fn, results_fp)
     for col_name, col_val in tbl_info.items():
         q_tbl[col_name] = col_val

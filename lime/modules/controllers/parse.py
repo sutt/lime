@@ -1,5 +1,12 @@
 import json
 import yaml
+from lime.modules.models.internal import (
+    MdDocument,
+    MdSheetSection,
+    MdQuestionSection,
+    QuestionSchema,
+    SheetSchema,
+)
 
 ENDCHAR_MD_TOKENS = ['|EVAL-ENDCHAR|', '<EVAL-ENDCHAR>']
 
@@ -187,14 +194,19 @@ def parse_wrapper(
 
 if __name__ == '__main__':
     sheet_obj = parse_wrapper(
-        # '../../wordle-qa-1/delta/input-mini.md',
-        # '../../wordle-qa-1/kappa/input-common-sense-1.md',
-        '../../wordle-qa-1/kappa/input-wordle-basic-1.md',
-        # '../tests/data/dir-two/input-one.md',
-        ''
-        # '../tests/data/input-one.md',
-        '../data/md-schema.yaml',
+        '../../../../datasets/tmp/one/input-common-sense-2.md',
+        '../../data/md-schema.yaml'
     )
-
-    print(json.dumps(sheet_obj, indent=2))
+    
+    x1 = MdSheetSection(**sheet_obj[0])
+    # print(x1)
+    questions = [MdQuestionSection(**e) for e in sheet_obj[1:]]
+    # print(questions)
+    y = MdDocument(sections=[x1, *questions])
+    # print(y)
+    z = SheetSchema.from_mddoc(y)    
+    # print(z.model_dump_json(indent=2))
+    print(z.questions[0].model_dump())
+    # x = z.to_json()
+    # print(json.dumps(sheet_obj, indent=2))
     
