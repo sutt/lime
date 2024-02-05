@@ -42,7 +42,7 @@ def grade_array(
     grades = []
 
     for answer, completion in zip(answers, completions):
-        if answer is None:
+        if answer is None or completion is None:
             grade = None
         else:
             grade = fuzzier_match(

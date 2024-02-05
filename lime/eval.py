@@ -1,14 +1,11 @@
 import os, time, json, uuid
 from typing import Union, Any
-from lime.modules.controllers.parse import parse_wrapper
+from lime.modules.controllers.parse import (
+    parse_to_obj
+)
 from lime.modules.models.internal import (
-    MdSheetSection,
-    MdQuestionSection,
-    MdDocument,
-    QuestionSchema,
     SheetSchema,
     HeaderOutput,
-    GradingOutput,
     QuestionOutput,
     SheetOutputSchema,
 )
@@ -20,11 +17,11 @@ from lime.modules.grading.base import (
 )
 from lime.modules.inference.interface import (
     prompt_model,
+    valid_model_name,
     ModelCacheFactory,
 )
 from lime.modules.views.output import (
-    output_json, 
-    output_markdown,
+    output_json,
 )
 from lime.modules.models.state import ConfigLoader
 from lime.modules.models.errs import (
@@ -46,45 +43,20 @@ class ExecSettings(ConfigLoader):
 ExecSettings._initialize()
 
 
-def get_setting(args: dict, key: str, default: Any = None):
-    if args.get(key) is not None:
-        return args[key]
-    else:
-        try: 
-            return getattr(ExecSettings, key)
-        except Exception as e: 
-            return default
-
-
 def eval_sheet(
-    input_md_fn: str,
-    input_schema_fn: str,
-    output_json_fn: str,
+    sheet_obj: SheetSchema,
     model_name: str,
     run_id: str,
+    output_json_fn: str,
     verbose_level: int = 0,
 ) -> list:
-    
-    json_doc = parse_wrapper(
-        fn=input_md_fn,
-        md_schema_fn=input_schema_fn,
-    )
 
     progress = ProgressMsg(verbose_level=verbose_level)
-    
-    md_doc = MdDocument(
-        sections = [
-            MdSheetSection(**json_doc[0]),
-            *[MdQuestionSection(**e) for e in json_doc[1:]],
-        ]
-    )
-    
-    sheet_obj = SheetSchema.from_mddoc(md_doc)
     
     output = SheetOutputSchema(
         header = HeaderOutput(
             sheet_name=sheet_obj.name,
-            sheet_fn=input_md_fn,
+            # sheet_fn=input_md_fn,
             run_id=run_id,
             name_model=model_name,
         ),
@@ -117,9 +89,8 @@ def eval_sheet(
             name            = question.name,
             meta_data       = question.meta,
             ground_truth    = question.answer,
-            question        = (question.text_sys or '') + question.text_usr,
-            question_usr    = question.text_usr,
             question_sys    = question.text_sys,
+            question_usr    = question.text_usr,
             completion      = completion,
             error           = str(error) if error is not None else None,
             eval_time       = time.time() - t0,
@@ -148,6 +119,16 @@ def eval_sheet(
 
     return output
 
+
+def get_setting(args: dict, key: str, default: Any = None):
+    if args.get(key) is not None:
+        return args[key]
+    else:
+        try: 
+            return getattr(ExecSettings, key)
+        except Exception as e: 
+            return default
+        
 
 def collect_input_sheets(
     sheets_dir: str,
@@ -241,14 +222,10 @@ def main(args):
     
     run_id = uuid.uuid4().hex[:uuid_digits]
 
-    eval_args = {
-        'input_schema_fn':input_schema_fn,
-        'model_name':     model_name,
-        'verbose_level':  verbose_level,
-        'run_id':         run_id,
-    }
+    is_valid = valid_model_name(model_name)
+    if not is_valid:
+        raise BaseQuietError(f'Invalid model_name: {model_name}')
         
-    # main loop
     for sheet_fn in sheet_fns:
         
         tmp_fn = sheet_fn.replace(input_dir, '')
@@ -257,21 +234,20 @@ def main(args):
         output_fn = f'output{tmp_fn}-{model_name}-{run_id}'
         output_json_fn = output_dir + output_fn + '.json' 
 
-        sheet_args = {
-            'input_md_fn':    sheet_fn,
-            'output_json_fn': output_json_fn,
-        }
-
-        eval_args.update(sheet_args)
-
         if dry_run:
             continue
         
-        # TODO - wrap with KeyBoardInterrupt
+        sheet_obj = parse_to_obj(
+            sheet_fn,
+            input_schema_fn,    
+        )
         
-        # call main function
         output = eval_sheet(
-            **eval_args
+            sheet_obj=sheet_obj,
+            model_name=model_name,
+            run_id=run_id,
+            output_json_fn= output_json_fn,
+            verbose_level= verbose_level,
         )
     
     if verbose_level > 0:

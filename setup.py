@@ -14,6 +14,7 @@ setup(
         'pandas',
         'tabulate',
         'openai',
+        'tiktoken',
     ],
     extras_require={
         'dev': ['pytest', 'jupyter', 'llama_cpp_python'],

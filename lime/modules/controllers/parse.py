@@ -1,9 +1,13 @@
+import os
 import json
 import yaml
+from pydantic import (
+    BaseModel
+)
 from lime.modules.models.internal import (
-    MdDocument,
     MdSheetSection,
     MdQuestionSection,
+    MdDocument,
     QuestionSchema,
     SheetSchema,
 )
@@ -106,10 +110,12 @@ def extract_meta_kv(
     return d_meta
 
 
+
+
 def parse_markdown(
     text: str, 
     md_schema: dict
-) -> list:
+) -> MdDocument:
     
     # parse and extract major sections
     d_md = {obj: md_schema[obj]['md_header'] for obj in md_schema}
@@ -119,7 +125,7 @@ def parse_markdown(
     major_sections = extract_sections(text, parsed_markers)
 
     # parse and extract sub-sections
-    output = []
+    output = MdDocument(header=None, questions=[])
     d_sheet_meta = None
     sheet_question = ''
     
@@ -156,6 +162,7 @@ def parse_markdown(
 
                 if section_type == 'sheet':
                     sheet_question = strip_end_token(sub_section['text'])
+                    sub_section['clean'] = strip_end_token(sub_section['text'])
                     
                 elif section_type == 'question':
                     sub_section['text_sys'] = sheet_question
@@ -169,11 +176,22 @@ def parse_markdown(
                     strip_end_token(sub_section['text'])
                 )
 
-        output.append({
-            'type': section_type,
-            'name': section['name'],
-            'sub_sections': sub_sections
-        })
+        if section_type == 'sheet':
+            output.header = MdSheetSection(
+                type = section_type,
+                name = section['name'],
+                sub_sections = sub_sections
+            )
+        elif section_type == 'question':
+            output.questions.append(
+                MdQuestionSection(
+                    type = section_type,
+                    name = section['name'],
+                    sub_sections = sub_sections
+                )
+            )
+        else:
+            raise ValueError(f'Unknown section type: {section_type}')
 
     return output
 
@@ -192,21 +210,27 @@ def parse_wrapper(
     return parse_markdown(text, md_schema)
 
 
+def parse_to_obj(
+    fn: str,
+    md_schema_fn: str,
+) -> SheetSchema:
+
+    md_doc = parse_wrapper(fn, md_schema_fn)
+
+    sheet_obj = SheetSchema.from_mddoc(md_doc)
+
+    return sheet_obj
+
+
 if __name__ == '__main__':
-    sheet_obj = parse_wrapper(
+    md_doc = parse_wrapper(
         '../../../../datasets/tmp/one/input-common-sense-2.md',
         '../../data/md-schema.yaml'
     )
     
-    x1 = MdSheetSection(**sheet_obj[0])
-    # print(x1)
-    questions = [MdQuestionSection(**e) for e in sheet_obj[1:]]
-    # print(questions)
-    y = MdDocument(sections=[x1, *questions])
-    # print(y)
-    z = SheetSchema.from_mddoc(y)    
-    # print(z.model_dump_json(indent=2))
-    print(z.questions[0].model_dump())
+    sheet = SheetSchema.from_mddoc(md_doc)    
+    print(sheet.model_dump_json(indent=2))
+    # print(z.questions[0].model_dump())
     # x = z.to_json()
     # print(json.dumps(sheet_obj, indent=2))
     

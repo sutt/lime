@@ -185,8 +185,9 @@ class LocalModel:
         self.llm.reset()
         self.llm.eval(tokenized_wrapped_prompt)  # **params_llm_eval
 
-    def tokenize(self):
-        pass
+    def num_tokens(self, text: str) -> int:
+        tokens = self.llm.tokenize(text.encode())
+        return len(tokens)
     
     @suppress_stderr
     def save_state(self):

@@ -1,5 +1,6 @@
 import os
 from dotenv import load_dotenv
+import tiktoken
 from openai import (
     OpenAI, 
     AuthenticationError,
@@ -27,6 +28,16 @@ def check_key_is_valid() -> bool:
     except Exception as e:
         print(f'error in check_key_is_valid: {str(e)}')
         return False
+
+
+def get_num_tokens(model_name: str, text: str) -> int:
+    '''wont be exact due to system message payload style'''
+    try:
+        enc = tiktoken.encoding_for_model(model_name)
+        return len(enc.encode(text))
+    except:
+        return -1
+
 
 def submit_prompt(
     prompt: str,

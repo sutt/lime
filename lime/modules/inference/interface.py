@@ -2,12 +2,15 @@ from typing import Union, Any
 from .oai_api import (
     submit_prompt, 
     get_completion,
+    check_key_is_valid,
 )
 from .local_cpp import (
     LocalModel,
     LocalModelCache,
     llama_cpp_loaded,
+    get_model_fn,
 )
+
 
 class ModelCacheFactory:
     def __init__(self, b_init=True):
@@ -16,6 +19,22 @@ class ModelCacheFactory:
             self.instance = LocalModelCache()
     def get(self) -> Union[None, LocalModelCache]:
         return self.instance
+    
+
+def valid_model_name(model_name: str) -> bool:
+    if model_name.startswith('gpt'):
+        if check_key_is_valid():
+            return True
+        return False
+    elif llama_cpp_loaded:
+        try: 
+            _ = get_model_fn(model_name)
+            return True
+        except:
+            return False
+    else:
+        return False
+    
 
 def prompt_model(
     model_name: str,
