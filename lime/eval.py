@@ -1,4 +1,4 @@
-import os, time, json, uuid
+import os, time, json, uuid, sys
 from typing import Union, Any
 from lime.modules.controllers.parse import (
     parse_to_obj
@@ -9,8 +9,12 @@ from lime.modules.models.internal import (
     QuestionOutput,
     SheetOutputSchema,
 )
+from lime.modules.models.utils import (
+    get_lime_version,
+)
 from lime.modules.views.msg.eval import (
-    ProgressMsg
+    SheetProgressMsg,
+    MainProgressMsg,
 )
 from lime.modules.grading.base import (
     grade_answer,
@@ -39,6 +43,7 @@ class ExecSettings(ConfigLoader):
     input_sheet_prefix = 'input'
     output_sheet_prefix = 'output'
     use_prompt_caching = True
+    save_tmp_file = False
 
 ExecSettings._initialize()
 
@@ -47,18 +52,19 @@ def eval_sheet(
     sheet_obj: SheetSchema,
     model_name: str,
     run_id: str,
-    output_json_fn: str,
+    tmp_output_fn: str = None,
     verbose_level: int = 0,
 ) -> list:
 
-    progress = ProgressMsg(verbose_level=verbose_level)
+    progress = SheetProgressMsg(verbose_level=verbose_level)
     
     output = SheetOutputSchema(
         header = HeaderOutput(
             sheet_name=sheet_obj.name,
-            # sheet_fn=input_md_fn,
+            sheet_fn=sheet_obj.sheet_fn,
             run_id=run_id,
             name_model=model_name,
+            lime_version=get_lime_version(),
         ),
         questions = [],
     )
@@ -105,15 +111,12 @@ def eval_sheet(
         
         output.questions.append(question_output)
 
-        # TODO - save temporarily to disk
+        if tmp_output_fn is not None:
+            s = output.model_dump_json(indent=2)
+            with open(tmp_output_fn, 'w') as f:
+                f.write(s)
 
         progress.post_prompt(question_output)
-
-        # end loop
-
-    # TODO - erase temp files
-        
-    output_json(output_json_fn, output.model_dump())
 
     progress.post_loop(output)
 
@@ -160,7 +163,6 @@ def setup_parser(parser):
     parser.add_argument('-m', '--model_name',    type=str)
     parser.add_argument('-o', '--output_dir',    type=str)
     parser.add_argument('-y', '--dry_run',       action='store_true')
-    parser.add_argument('-u', '--uuid_digits',   type=int)
     parser.add_argument('-v', '--verbose',       action='count', default=0)
     
 
@@ -216,15 +218,17 @@ def main(args):
     input_schema_fn = os.path.join(script_dir, 'data', 'md-schema.yaml')
 
     model_name      = get_setting(args, 'model_name')
-    uuid_digits     = get_setting(args, 'uuid_digits')
     dry_run         = get_setting(args, 'dry_run', default=False)
     verbose_level   = get_setting(args, 'verbose')
     
-    run_id = uuid.uuid4().hex[:uuid_digits]
+    run_id = uuid.uuid4().hex[:ExecSettings.uuid_digits]
 
-    is_valid = valid_model_name(model_name)
-    if not is_valid:
+    if not valid_model_name(model_name):
         raise BaseQuietError(f'Invalid model_name: {model_name}')
+    
+    progress = MainProgressMsg(verbose_level=verbose_level)
+
+    progress.pre_loop(sheet_fns=sheet_fns)
         
     for sheet_fn in sheet_fns:
         
@@ -232,23 +236,46 @@ def main(args):
         tmp_fn = tmp_fn.replace('input', '')
         tmp_fn = tmp_fn.replace('.md', '')
         output_fn = f'output{tmp_fn}-{model_name}-{run_id}'
-        output_json_fn = output_dir + output_fn + '.json' 
-
-        if dry_run:
-            continue
+        output_fp = output_dir + output_fn + '.json'
+        
+        tmp_output_fp = None
+        if ExecSettings.save_tmp_file:
+            tmp_output_fp = output_dir + 'tmp.' + output_fn + '.json'
         
         sheet_obj = parse_to_obj(
             sheet_fn,
             input_schema_fn,    
         )
+
+        sheet_obj.sheet_fn = sheet_fn
+
+        progress.pre_sheet(sheet_obj)
         
-        output = eval_sheet(
-            sheet_obj=sheet_obj,
-            model_name=model_name,
-            run_id=run_id,
-            output_json_fn= output_json_fn,
-            verbose_level= verbose_level,
-        )
+        if dry_run:
+            continue
+
+        try:
+            output = eval_sheet(
+                sheet_obj=sheet_obj,
+                model_name=model_name,
+                run_id=run_id,
+                tmp_output_fn=tmp_output_fp,
+                verbose_level= verbose_level,
+            )
+        except KeyboardInterrupt:
+            print('Keyboard Interrupt.')
+            sys.exit(1)
+        except Exception as e:
+            raise BaseQuietError(f'Error processing sheet: {sheet_fn}: {e}')
+
+        with open(output_fp, 'w') as f:
+            f.write(output.model_dump_json(indent=2))
+
+        if (tmp_output_fp is not None) and os.path.isfile(tmp_output_fp):
+            try:
+                os.remove(tmp_output_fp)
+            except Exception as e:
+                BaseQuietError(f'Error removing temp file: {tmp_output_fp}: {e}')
     
-    if verbose_level > 0:
-        print('script done.')
+    progress.post_loop()
+        

@@ -15,9 +15,10 @@ LocalParams:
   seed: null
   default_model: 'gpt-3.5-turbo'
 
-DefaultSettings:
+ExecSettings:
   verbose: 1
   uuid_digits: 4
   input_sheet_prefix: 'input'
   output_sheet_prefix: 'output'
   use_prompt_caching: True
+  save_tmp_file: True

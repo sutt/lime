@@ -1,5 +1,5 @@
-import sys
-from typing import Any
+import sys, json
+from typing import Any, List
 from lime.modules.models.internal import (
     QuestionSchema,
     SheetSchema,
@@ -7,7 +7,7 @@ from lime.modules.models.internal import (
     SheetOutputSchema,
 )
 
-class ProgressMsg:
+class SheetProgressMsg:
     def __init__(
             self, 
             verbose_level: int = 0,
@@ -60,3 +60,45 @@ class ProgressMsg:
     
     def __call__(self, *args: Any, **kwds: Any) -> Any:
         pass
+
+
+class MainProgressMsg:
+    def __init__(
+            self, 
+            verbose_level: int = 0,
+            **kwargs
+        ):
+        self.verbose = verbose_level
+
+    def pre_loop(
+            self,
+            sheet_fns: List[str],
+        ) -> None:
+        if self.verbose > 0: 
+            print(f"Found {len(sheet_fns)} sheets")
+        if self.verbose > 1:
+            print(sheet_fns)
+    
+    def post_loop(
+            self
+        ) -> None:
+        if self.verbose > 0:
+            print('script done.')
+
+    def pre_sheet(
+            self,
+            sheet_obj: SheetSchema,
+        ) -> None:
+        if self.verbose > 0:
+            print(f"Processing sheet: {sheet_obj.name}")
+            parse_warns = {
+                e.name: e.parse_warns
+                for e in sheet_obj.questions
+                if len(e.parse_warns) > 0
+            }
+            if len(parse_warns) > 0:
+                print(f"Sheet: {sheet_obj.name} has {len(parse_warns)} parse warnings")
+        if self.verbose > 1:
+            if len(parse_warns) > 0:
+                print(json.dumps(parse_warns, indent=2))
+    

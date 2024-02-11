@@ -2,6 +2,7 @@ import os
 import sys
 import yaml
 import json
+import pkg_resources
 
 CONFIG_DIR = '.lime'
 CONFIG_FN = 'config.yaml'
@@ -33,3 +34,9 @@ def get_workspace_config_dir():
     except Exception as e:
         return None
     return None
+
+def get_lime_version():
+    try:
+        return pkg_resources.get_distribution('lime').version
+    except Exception as e:
+        return 'unknown'

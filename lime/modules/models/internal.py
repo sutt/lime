@@ -27,16 +27,18 @@ class MdDocument(BaseModel):
 
 class QuestionSchema(BaseModel):
     name:           str
-    meta:           Dict[str, str]
-    text_usr:       str
+    parse_warns:    List[str] = []
+    meta:           Dict[str, str] = {}
+    text_usr:       Optional[str] = None
     text_sys:       Optional[str] = None
     answer:         Optional[str] = None
 
 class HeaderOutput(BaseModel):
     sheet_name:     str
-    sheet_fn:       Optional[str] = None    # this needs setting
+    sheet_fn:       Optional[str]  = None
     run_id:         str
     name_model:     str
+    lime_version:   str            = 'unknown'
 
 class GradingOutput(BaseModel):
     grade_style:    str            = 'default'
@@ -48,9 +50,9 @@ class GradingOutput(BaseModel):
 class QuestionOutput(BaseModel):
     name:           str
     meta_data:      Dict[str, str]  # TODO - parseInt if applicable
-    ground_truth:   str
-    question_sys:   str
-    question_usr:   str
+    ground_truth:   Optional[str] = None
+    question_usr:   Optional[str] = None
+    question_sys:   Optional[str] = None
     completion:     Optional[str] = None
     error:          Optional[str] = None
     eval_time:      float
@@ -61,10 +63,11 @@ class SheetOutputSchema(BaseModel):
     questions:      List[QuestionOutput]
 
 class SheetSchema(BaseModel):
-    name: str
-    meta: Dict[str, str]
-    text: str
-    questions: List[QuestionSchema]
+    name:           str
+    meta:           Dict[str, str]
+    sheet_fn:       Optional[str] = None
+    text:           str
+    questions:      List[QuestionSchema]
 
     @classmethod
     def from_mddoc(cls, doc: MdDocument):
@@ -96,14 +99,21 @@ class SheetSchema(BaseModel):
             question_test_sys = sheet_text
             question_answer = [e for e in question.sub_sections if e['type'] == 'answer']
             question_answer = question_answer[0]['answer_clean'] if len(question_answer) > 0 else None
-            # TODO - add validation: e.g unique question name, test_usr must be present, etc
+            parse_warns = []
+            if question_text_usr is None:
+                question_text_usr = ''
+                parse_warns.append('text_usr is None')
+            if question_name in [q.name for q in question_schemas]:
+                parse_warns.append(f'question name `{question_name}` is not unique')
+                question_name = f"{question_name}_1"
             question_schemas.append(
                 QuestionSchema(
                     name=question_name,
                     meta=question_meta,
                     text_usr=question_text_usr,
                     text_sys=question_test_sys,
-                    answer=question_answer
+                    answer=question_answer,
+                    parse_warns=parse_warns.copy()
                 )
             )
 
