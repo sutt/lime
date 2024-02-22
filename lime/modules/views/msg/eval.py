@@ -7,6 +7,9 @@ from lime.modules.models.internal import (
     SheetOutputSchema,
 )
 
+def shorten(s: str, n_chars: int) -> str:
+    return s if len(s) <= n_chars else s[:n_chars - 3] + '...'
+
 class SheetProgressMsg:
     def __init__(
             self, 
@@ -14,6 +17,7 @@ class SheetProgressMsg:
             **kwargs
         ):
         self.verbose = verbose_level
+        self.n_chars = 13
 
     def pre_loop(
             self,
@@ -34,28 +38,49 @@ class SheetProgressMsg:
             ])
             print(f"Completed all {total_questions} questions")
             print(f'completion_errors: {num_errors}')
-            # TODO - add parse errors
     
     def pre_prompt(
             self, 
             question_obj: QuestionSchema
         ) -> None:
         if self.verbose > 0:
-            print(f"Processing question: {question_obj.name}")
-            # TODO - flush this to make everything one line when terse
+            s = '{:<{n_chars}}'.format(
+                shorten(question_obj.name, self.n_chars), 
+                n_chars=self.n_chars
+            )
+            print(s, end='| ', flush=True)
         if self.verbose > 1:
-            max_chars = 40
-            s = question_obj.text_usr
-            if len(s) > max_chars:
-                s = s[:max_chars] + "..."
-            print(f"Question text: {s}")
+            s = '{:<{n_chars}}'.format(
+                shorten(question_obj.text_usr, self.n_chars), 
+                n_chars=self.n_chars
+            )
+            print(s, end='| ', flush=True)
+
     def post_prompt(
             self, 
-            question_output: QuestionOutput,
+            q_out: QuestionOutput,
         ) -> None:
         if self.verbose > 0:
-            print(f'complete in: {question_output.eval_time:.2f}')
-            print(f'grade={question_output.grading.grade_bool}')
+            s = '{:<{n_chars}}'.format(
+                f"grade: {'✅' if q_out.grading.grade_bool else '❌'}", 
+                n_chars=self.n_chars
+            )
+            print(s, end='| ', flush=True)
+            s = '{:<{n_chars}}'.format(
+                f'{q_out.eval_time:.2f} secs', 
+                n_chars=self.n_chars
+            )
+            print(s, end='| ', flush=True)
+        if self.verbose > 1:
+            n_sys, n_usr = (q_out.ntokens_sys or 0), (q_out.ntokens_usr or 0)
+            tps = ( (n_sys + n_usr) / q_out.eval_time)
+            tps = f'{tps:.1f}' if tps > 0 else 'n/a'
+            s = '{:<{n_chars}}'.format(
+                 f'{tps} tok/sec', 
+                n_chars=self.n_chars
+            )
+            print(s, end='| ', flush=True)
+        print('', flush=False)
             
     
     def __call__(self, *args: Any, **kwds: Any) -> Any:
@@ -80,10 +105,11 @@ class MainProgressMsg:
             print(sheet_fns)
     
     def post_loop(
-            self
+            self,
+            output: SheetOutputSchema,
         ) -> None:
         if self.verbose > 0:
-            print('script done.')
+            print(f'complete run_id: {output.header.run_id}')
 
     def pre_sheet(
             self,

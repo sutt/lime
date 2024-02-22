@@ -9,6 +9,7 @@ from typing import (
     Dict,
     Any,
 )
+from datetime import datetime
 
 
 class MdSheetSection(BaseModel):
@@ -33,12 +34,17 @@ class QuestionSchema(BaseModel):
     text_sys:       Optional[str] = None
     answer:         Optional[str] = None
 
+class InferenceParams(BaseModel):
+    pass
+
 class HeaderOutput(BaseModel):
     sheet_name:     str
     sheet_fn:       Optional[str]  = None
     run_id:         str
     name_model:     str
+    start_time:     datetime
     lime_version:   str            = 'unknown'
+    infer_params:   Dict[str, Any] = {}
 
 class GradingOutput(BaseModel):
     grade_style:    str            = 'default'
@@ -49,7 +55,8 @@ class GradingOutput(BaseModel):
 
 class QuestionOutput(BaseModel):
     name:           str
-    meta_data:      Dict[str, str]  # TODO - parseInt if applicable
+    meta_data:      Dict[str, str]
+    gen_params:     Dict[str, Any] = {}
     ground_truth:   Optional[str] = None
     question_usr:   Optional[str] = None
     question_sys:   Optional[str] = None
@@ -57,6 +64,9 @@ class QuestionOutput(BaseModel):
     error:          Optional[str] = None
     eval_time:      float
     grading:        Optional[GradingOutput] = None
+    ntokens_usr:    Optional[int] = None
+    ntokens_sys:    Optional[int] = None
+    ntokens_cmp:    Optional[int] = None
 
 class SheetOutputSchema(BaseModel):
     header:         HeaderOutput

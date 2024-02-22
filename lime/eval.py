@@ -1,5 +1,9 @@
-import os, time, json, uuid, sys
-from typing import Union, Any
+import os, time, uuid, sys
+from datetime import datetime
+from typing import (
+    Union, 
+    Any,
+)
 from lime.modules.controllers.parse import (
     parse_to_obj
 )
@@ -22,12 +26,13 @@ from lime.modules.grading.base import (
 from lime.modules.inference.interface import (
     prompt_model,
     valid_model_name,
+    count_tokens,
+    extract_gen_params,
     ModelCacheFactory,
 )
-from lime.modules.views.output import (
-    output_json,
+from lime.modules.models.state import (
+    ConfigLoader
 )
-from lime.modules.models.state import ConfigLoader
 from lime.modules.models.errs import (
     BaseQuietError,
     ReqArgMissingError,
@@ -54,49 +59,65 @@ def eval_sheet(
     run_id: str,
     tmp_output_fn: str = None,
     verbose_level: int = 0,
-) -> list:
+) -> SheetOutputSchema:
 
     progress = SheetProgressMsg(verbose_level=verbose_level)
     
     output = SheetOutputSchema(
         header = HeaderOutput(
-            sheet_name=sheet_obj.name,
-            sheet_fn=sheet_obj.sheet_fn,
-            run_id=run_id,
-            name_model=model_name,
-            lime_version=get_lime_version(),
+            sheet_name  = sheet_obj.name,
+            sheet_fn    = sheet_obj.sheet_fn,
+            run_id      = run_id,
+            name_model  = model_name,
+            lime_version= get_lime_version(),
+            start_time  = datetime.now(),
         ),
         questions = [],
     )
     
-    model_cache = ModelCacheFactory(
-        b_init=not(model_name.startswith('gpt'))
-    )
+    if model_name.startswith('gpt'):
+        model_cache = None
+        infer_params = {}
+    else:
+        model_cache = ModelCacheFactory().get()
+        local_model = model_cache.get()
+        infer_params = local_model.get_all_params()
+    
+    sheet_gen_params = extract_gen_params(sheet_obj.meta)
+    infer_params.update({'gen_params': sheet_gen_params})
+    output.header.infer_params = infer_params
 
     progress.pre_loop(sheet_obj)
     
     for question in sheet_obj.questions:
         
         t0 = time.time()
-        completion = None 
-        error = None
+
+        ntokens_usr = count_tokens(question.text_usr, model_name)
+        ntokens_sys = count_tokens(question.text_sys, model_name)
+
+        gen_params = extract_gen_params(question.meta)
 
         progress.pre_prompt(question)
-                
+        
         completion, error = prompt_model(
             model_name  = model_name,
             prompt_sys  = question.text_sys,
             prompt_usr  = question.text_usr,
-            model_cache = model_cache.get(),
+            model_cache = model_cache,
             verbose     = verbose_level,
+            gen_params  = gen_params,
         )
         
         question_output = QuestionOutput(
             name            = question.name,
             meta_data       = question.meta,
+            gen_params      = gen_params,
             ground_truth    = question.answer,
             question_sys    = question.text_sys,
             question_usr    = question.text_usr,
+            ntokens_usr     = ntokens_usr,      # TODO - move to call below
+            ntokens_sys     = ntokens_sys,
             completion      = completion,
             error           = str(error) if error is not None else None,
             eval_time       = time.time() - t0,
@@ -277,5 +298,5 @@ def main(args):
             except Exception as e:
                 BaseQuietError(f'Error removing temp file: {tmp_output_fp}: {e}')
     
-    progress.post_loop()
+    progress.post_loop(output)
         

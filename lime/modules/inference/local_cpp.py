@@ -4,6 +4,7 @@ import ctypes
 from contextlib import redirect_stderr
 from typing import (
     Dict,
+    Any,
 )
 from ..models.state import (
     ConfigLoader,
@@ -24,6 +25,7 @@ llama_log_obj = []
 class LocalParams(ConfigLoader):
     max_tokens = 50
     temperature = 0.0
+    seed = None
 
 LocalParams._initialize()
 
@@ -137,53 +139,75 @@ def rename_llama_args(args: Dict) -> Dict:
             new_args[k] = v
     return new_args
 
+def get_sample_args(args: Dict) -> Dict:
+    arg_names = [
+        'temperature',
+        'top_k',
+        'top_p',
+    ]
+    sample_args = {k: args[k] for k in args if k in arg_names}
+    sample_args = rename_llama_args(sample_args)
+    return sample_args
+
 
 class LocalModel:
     '''
         use python_llama_cpp for inference
     '''
-    
-    @suppress_stderr
-    def __init__(self, model_name: str, **params):
+
+    def __init__(self, model_name:str=None, b_init:bool=True, **params):
         
         self.init_params = {
             'n_threads': 4,
             'n_ctx': 512,
         }
-        
-        init_params = {**self.init_params, **params}
-        
-        self.generate_params = {
-            'temperature': LocalParams.temperature,
-            'max_tokens': LocalParams.max_tokens,
+        self.init_params = {**self.init_params, **params}
+        self.gen_params = {
+            'temperature':  LocalParams.temperature,
+            'max_tokens':   LocalParams.max_tokens,
+            'seed':         LocalParams.seed,
         }
-        
-        llama_log_set(log_callback, ctypes.c_void_p())
-        
-        self.llm : Llama = Llama(
-            model_path=get_model_fn(model_name), 
-            **init_params
-        )
-
+        self.llm : Llama = None
         self.cached_state : LlamaState = None
+        self.b_init = False
+        if b_init:
+            self.init(model_name)
+        
+    @suppress_stderr
+    def init(self, model_name: str):
+        llama_log_set(log_callback, ctypes.c_void_p())
+        self.llm = Llama(
+            model_path=get_model_fn(model_name), 
+            **self.init_params
+        )
+        self.b_init = True
 
-    def __call__(self, prompt, **params):
+    def set_gen_params(self, gen_params: Dict[str, Any]):
+        self.gen_params = {**self.gen_params, **gen_params}
+
+    def get_all_params(self):
+        return {
+            'init_params': self.init_params,
+            'gen_params': self.gen_params,
+            'pkg_version': {
+                # k:v for k,v in CppInference.__dict__
+                # if not k.startswith('_')
+            },
+        }
+
+    def __call__(self, prompt):
         wrapped_prompt = wrap_prompt(prompt)
-        call_params = {**self.generate_params, **params}
         output = self.llm(
             prompt=wrapped_prompt, 
-            **call_params,
+            **self.gen_params,
         )
         return output
     
     def eval_prompt(self, prompt):
-        # we're expecting this is a sys_prompt and thus
-        # only wrap the left side. The usr_prompt will follow
-        # and only be wrapped on the right side.
         wrapped_prompt = wrap_prompt(sys_prompt=prompt)
         tokenized_wrapped_prompt = self.llm.tokenize(wrapped_prompt.encode())
         self.llm.reset()
-        self.llm.eval(tokenized_wrapped_prompt)  # **params_llm_eval
+        self.llm.eval(tokenized_wrapped_prompt)
 
     def num_tokens(self, text: str) -> int:
         tokens = self.llm.tokenize(text.encode())
@@ -199,29 +223,29 @@ class LocalModel:
     def eval_question(
             self, 
             question_text: str, 
-            seed: int = None, 
-            max_tokens: int = LocalParams.max_tokens, 
             verbose: int = 0,
         ) -> Dict:
-        # usr_prompt: only wrap right side
         wrapped_text = wrap_prompt(usr_prompt=question_text)
         tokens_question = self.llm.tokenize(wrapped_text.encode())
         self.llm.eval(tokens_question)
+        seed = self.gen_params.get('seed')
         if seed is not None: 
-            self.llm.set_seed(seed) # Seed (if set) must be after eval
+            self.llm.set_seed(seed)
         counter = 0
         completion = ''
-        token = self.llm.sample() # **params_llm_sample
+        token = self.llm.sample(**get_sample_args(self.gen_params))
         while token is not self.llm.token_eos() :
-            if counter >= max_tokens: break
-            counter += 1
-            _token = self.llm.detokenize([token]).decode()
-            completion += _token
-            if verbose > 0:
-                print(_token, end='', flush=True)
+            if counter >= self.gen_params.get('max_tokens', self.init_params.get('n_ctx')): 
+                break
+            else:
+                counter += 1
+            s_token = self.llm.detokenize([token]).decode()
+            completion += s_token
+            if verbose > 1:
+                print(s_token, end='', flush=True)
             self.llm.eval([token])
-            token = self.llm.sample() # **params_llm_sample
-        if verbose > 0: print(end='\n', flush=True)
+            token = self.llm.sample(**get_sample_args(self.gen_params))
+        if verbose > 1: print(end='\n', flush=True)
         return {
             'text': completion,
             'completion_tokens': counter,
@@ -240,28 +264,21 @@ class LocalModel:
         return data
 
 class LocalModelCache:
-    def __init__(self):
-        self.model: LocalModel = None
+    def __init__(self) -> None:
+        self.model: LocalModel = LocalModel(b_init=False)
         self.has_cache: bool = False
-        self.sys_prompt_tokens: int = 0
-    def get(self, model_name:str, sys_prompt:str):
-        # TODO - re_init for larger context
-        if self.model is None:
-            self.model = LocalModel(model_name)
-        if self.has_cache:
-            self.model.load_state()
-        else:
-            self.model.eval_prompt(sys_prompt)
-            self.model.save_state()
-            self.has_cache = True
-            self.sys_prompt = sys_prompt
-    def eval_question(self, question_text:str, **params):
-        # TODO - count tokens for n_ctx exapnsion
-        # total_tokens = 0 # sys_prompt
-        # total_tokens += params.get('max_tokens', 0)
-        return self.model.eval_question(question_text, **params)
-    def __call__(self, prompt: str):
-        return self.model(prompt)
+    def get(self, model_name:str=None, sys_prompt:str=None) -> LocalModel:
+        if model_name is not None:
+            if self.model.b_init is False:
+                self.model.init(model_name)
+            if self.has_cache:
+                self.model.load_state()
+            elif sys_prompt is not None:
+                self.model.eval_prompt(sys_prompt)
+                self.model.save_state()
+                self.has_cache = True
+                self.sys_prompt = sys_prompt
+        return self.model
     
 
 if __name__ == '__main__':
