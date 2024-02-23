@@ -9,6 +9,10 @@ from typing import (
 from lime.modules.models.state import (
     Secrets,
 )
+from lime.modules.models.errs import (
+    QuietError,
+    BaseQuietError,
+)
 from lime.modules.models.utils import (
     get_usr_config_dir,
     get_workspace_config_dir,
@@ -53,10 +57,14 @@ def setup_parser(argparser):
 
     argparser.add_argument('--full',        action='store_true')
     argparser.add_argument('--dataset',     action='store_true')
+    argparser.add_argument('-b', '--debug', action='store_true')
 
 def main(args):
 
     args = vars(args)
+
+    if args.get('debug'):
+        QuietError.debug_mode = True
 
     full_run = args.get('full')
     check_data = args.get('dataset')

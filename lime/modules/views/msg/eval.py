@@ -72,8 +72,10 @@ class SheetProgressMsg:
             )
             print(s, end='| ', flush=True)
         if self.verbose > 1:
-            n_sys, n_usr = (q_out.ntokens_sys or 0), (q_out.ntokens_usr or 0)
-            tps = ( (n_sys + n_usr) / q_out.eval_time)
+            n_sys = q_out.ntokens.sys or 0
+            n_usr = q_out.ntokens.usr or 0
+            n_cmp = q_out.ntokens.cmp or 0
+            tps = ( n_cmp / q_out.eval_time)
             tps = f'{tps:.1f}' if tps > 0 else 'n/a'
             s = '{:<{n_chars}}'.format(
                  f'{tps} tok/sec', 

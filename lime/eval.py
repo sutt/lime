@@ -12,6 +12,7 @@ from lime.modules.models.internal import (
     HeaderOutput,
     QuestionOutput,
     SheetOutputSchema,
+    NTokens,
 )
 from lime.modules.models.utils import (
     get_lime_version,
@@ -34,10 +35,8 @@ from lime.modules.models.state import (
     ConfigLoader
 )
 from lime.modules.models.errs import (
+    QuietError,
     BaseQuietError,
-    ReqArgMissingError,
-    FileNotFoundError,
-    NotADirectoryError,
 )
 
 
@@ -116,11 +115,17 @@ def eval_sheet(
             ground_truth    = question.answer,
             question_sys    = question.text_sys,
             question_usr    = question.text_usr,
-            ntokens_usr     = ntokens_usr,      # TODO - move to call below
-            ntokens_sys     = ntokens_sys,
             completion      = completion,
             error           = str(error) if error is not None else None,
             eval_time       = time.time() - t0,
+        )
+
+        ntokens_cmp = count_tokens(completion, model_name)
+
+        question_output.ntokens = NTokens(
+            usr = ntokens_usr,
+            sys = ntokens_sys,
+            cmp = ntokens_cmp,
         )
         
         grading_output = grade_answer(
@@ -185,6 +190,7 @@ def setup_parser(parser):
     parser.add_argument('-o', '--output_dir',    type=str)
     parser.add_argument('-y', '--dry_run',       action='store_true')
     parser.add_argument('-v', '--verbose',       action='count', default=0)
+    parser.add_argument('-b', '--debug',         action='store_true')
     
 
 def main(args):
@@ -192,6 +198,9 @@ def main(args):
     args = vars(args)
 
     script_dir = os.path.dirname(os.path.abspath(__file__))
+
+    if args.get('debug'):
+        QuietError.debug_mode = True
 
     # Check if the positional argument 'input' is provided
     input_path = args.get('input')
@@ -210,20 +219,20 @@ def main(args):
 
     # validation
     if sheet_fn is None and sheets_dir is None:
-        raise ReqArgMissingError('input')
+        raise BaseException('Required Arg Missing: `input`')
 
     if sheet_fn is not None and sheets_dir is not None:
         raise BaseQuietError('cant use both -f/--sheet_fn or -d/--sheets_dir args')
         
     if sheet_fn is not None:
         if not os.path.isfile(sheet_fn):
-            raise FileNotFoundError(sheet_fn)
+            raise BaseQuietError(f'File Not Found: {sheet_fn}')
         input_dir = "./"
         sheet_fns = [sheet_fn]
         
     if sheets_dir is not None:
         if not(os.path.isdir(sheets_dir)):
-            raise NotADirectoryError(sheets_dir)
+            raise BaseQuietError(f'Not A Directory: {sheets_dir}')
         input_dir = sheets_dir
         if input_dir[-1] != '/':
             input_dir += '/'
@@ -232,7 +241,7 @@ def main(args):
     if args['output_dir'] is not None:
         output_dir = args['output_dir']
         if os.path.isdir(output_dir):
-            raise NotADirectoryError(f'-o {output_dir} not a directory.')
+            raise BaseQuietError(f'Not A Directory: {output_dir}')
     else: 
         output_dir = input_dir
 

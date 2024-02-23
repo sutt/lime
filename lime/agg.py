@@ -5,8 +5,8 @@ import argparse
 from typing import Union
 from lime.modules.models.state import ConfigLoader
 from lime.modules.models.errs import (
-    ReqArgMissingError,
-    NotADirectoryError,
+    QuietError,
+    BaseQuietError,
 )
 from lime.modules.views.agg.collect import (
     build_data
@@ -74,19 +74,23 @@ def setup_parser(argparser):
     argparser.add_argument('input_dir', nargs='?', default=None
                           ,help='Input directory')
     argparser.add_argument('-v', '--verbose',       action='store_true')
+    argparser.add_argument('-b', '--debug',         action='store_true')
 
 
 def main(args):
     
     args = vars(args)
 
+    if args.get('debug'):
+        QuietError.debug_mode = True
+
     input_dir = args.get('input_dir')
 
     if input_dir is None:
-        raise ReqArgMissingError('input_dir')
+        raise BaseQuietError('Missing Required Arg: `input_dir`')
     
     if not(os.path.isdir(input_dir)):
-        raise NotADirectoryError(input_dir)
+        raise BaseQuietError(f'Not a Directory: {input_dir}')
     
     do_aggregate(
         results_dir=input_dir,

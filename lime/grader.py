@@ -3,8 +3,8 @@ import json
 import argparse
 from typing import Union
 from lime.modules.models.errs import (
-    ReqArgMissingError,
-    FileNotFoundError,
+    QuietError,
+    BaseQuietError,
 )
 from lime.modules.models.internal import (
     SheetSchema,
@@ -101,19 +101,23 @@ def setup_parser(argparser):
     argparser.add_argument('-w', '--overwrite',     action='store_true')
     argparser.add_argument('-v', '--verbose',       action='store_true')
     argparser.add_argument('-l', '--liberal_grading', action='store_true')
+    argparser.add_argument('-b', '--debug',         action='store_true')
 
 
 def main(args):
     
     args = vars(args)
 
+    if args.get('debug'):
+        QuietError.debug_mode = True
+
     output_json_fp = args.get('output_fp')
     
     if output_json_fp is None:
-        raise ReqArgMissingError('output_fp')
+        raise BaseQuietError('Missing Required Arg: `output_fp`')
     
     if not(os.path.isfile(output_json_fp)):
-        raise FileNotFoundError(output_json_fp)
+        raise BaseQuietError(f'FileNotFound: {output_json_fp}')
 
     grades = do_grade_sheet(
         output_json_fp=output_json_fp,

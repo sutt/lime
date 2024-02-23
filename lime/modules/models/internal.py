@@ -34,9 +34,6 @@ class QuestionSchema(BaseModel):
     text_sys:       Optional[str] = None
     answer:         Optional[str] = None
 
-class InferenceParams(BaseModel):
-    pass
-
 class HeaderOutput(BaseModel):
     sheet_name:     str
     sheet_fn:       Optional[str]  = None
@@ -51,7 +48,12 @@ class GradingOutput(BaseModel):
     grade_bool:     Optional[bool] = None
     grade_error:    Optional[str]  = None
     grade_metric:   Optional[Any]  = None
-    grade_detail:   Optional[Any]  = None  # This will hold objects, e.g for logprobs style
+    grade_detail:   Optional[Any]  = None
+
+class NTokens(BaseModel):
+    usr:            Optional[int]  = None
+    sys:            Optional[int]  = None
+    cmp:            Optional[int]  = None
 
 class QuestionOutput(BaseModel):
     name:           str
@@ -65,8 +67,7 @@ class QuestionOutput(BaseModel):
     eval_time:      float
     grading:        Optional[GradingOutput] = None
     ntokens_usr:    Optional[int] = None
-    ntokens_sys:    Optional[int] = None
-    ntokens_cmp:    Optional[int] = None
+    ntokens:        Optional[NTokens] = None
 
 class SheetOutputSchema(BaseModel):
     header:         HeaderOutput

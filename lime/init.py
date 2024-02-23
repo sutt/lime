@@ -2,7 +2,6 @@ import os
 import shutil
 from lime.modules.models.errs import (
     BaseQuietError,
-    ReqArgMissingError,
 )
 
 
@@ -131,7 +130,7 @@ def main(args):
     init_type = args.get('init_type')
 
     if init_type is None:
-        raise ReqArgMissingError('init_type')
+        raise BaseQuietError('Missing Required Arg: `init_type`')
     
     if init_type == 'config':
         

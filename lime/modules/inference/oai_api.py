@@ -30,7 +30,7 @@ def check_key_is_valid() -> bool:
         return False
 
 
-def get_num_tokens(model_name: str, text: str) -> int:
+def get_num_tokens(text: str, model_name: str) -> int:
     '''wont be exact due to system message payload style'''
     try:
         enc = tiktoken.encoding_for_model(model_name)

@@ -46,3 +46,6 @@ def main():
         parser.print_help()
 
     return
+
+if __name__ == '__main__':
+    main()

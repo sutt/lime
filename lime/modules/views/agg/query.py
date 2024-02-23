@@ -19,8 +19,9 @@ def format_multi_index(df):
 def input_by_model(data):
     return (
         data.groupby(['input_name', 'model_name'])
-        .agg({'run_id': 'nunique'})
+        .agg({'run_id': 'nunique', 'name': 'nunique'})
         .reset_index()
+        .rename(columns={'name': 'unique_questions'})
         .sort_values('run_id', ascending=False)
     )
 
@@ -38,7 +39,7 @@ def sheet_by_model_pct_correct(data):
     tmp = (
         data.groupby(['input_name', 'model_name'])
         .agg({'name': 'count', 'grade_bool': 'mean'}) 
-        .rename(columns={'name': 'num_questions', 'grade_bool': 'pct_correct'})
+        .rename(columns={'name': 'total_questions', 'grade_bool': 'pct_correct'})
         .sort_values(['input_name', 'pct_correct'], ascending=False)
     )
     tmp['pct_correct'] = (
