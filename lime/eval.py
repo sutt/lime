@@ -219,7 +219,7 @@ def main(args):
 
     # validation
     if sheet_fn is None and sheets_dir is None:
-        raise BaseException('Required Arg Missing: `input`')
+        raise BaseQuietError('Required Arg Missing: `input`')
 
     if sheet_fn is not None and sheets_dir is not None:
         raise BaseQuietError('cant use both -f/--sheet_fn or -d/--sheets_dir args')

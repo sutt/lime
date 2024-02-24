@@ -199,7 +199,7 @@ def parse_markdown(
 def parse_wrapper(
     fn: str,
     md_schema_fn: str,
-) -> list:
+) -> MdDocument:
 
     with open(fn, 'r') as f:
         text = f.readlines()

@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 setup(
     name='lime',
     version='0.1',
-    description='cli tool for iterating on llm evals',
+    description='cli tool for microframework on llm evals',
     author='Will Sutton',
     author_email='wsutton17@gmail.com',
     packages=find_packages(),
