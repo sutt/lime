@@ -1,12 +1,11 @@
 import os, sys, json, time
 from unittest import mock
 import pytest
-sys.path.append('../')
 
-from modules.models.config import ConfigLoader
+from lime.modules.models.config import ConfigLoader
 
-config_usr_fn = './data/stubs/config-toy-1.yaml'
-config_workspace_fn = './data/stubs/config-toy-2.yaml'
+config_usr_fn = './tests/data/stubs/config-toy-1.yaml'
+config_workspace_fn = './tests/data/stubs/config-toy-2.yaml'
 
 # @pytest.mark.dev
 def test_toy_example_1():

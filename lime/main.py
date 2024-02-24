@@ -1,6 +1,6 @@
 import argparse
 import lime.eval as eval
-import lime.grader as grade
+import lime.grade as grade
 import lime.agg as agg
 import lime.init as init
 import lime.check as check

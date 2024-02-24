@@ -1,8 +1,7 @@
 import os, sys, json, time
 from unittest import mock
-sys.path.append('../')
 
-from modules.inference.local_cpp import LocalModel
+from lime.modules.inference.local_cpp import LocalModel
 
 def test_wrap_prompt():
     
