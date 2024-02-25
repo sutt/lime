@@ -237,6 +237,8 @@ def main(args):
         if input_dir[-1] != '/':
             input_dir += '/'
         sheet_fns = collect_input_sheets(sheets_dir)
+        if len(sheet_fns) == 0:
+            raise BaseQuietError(f'No input files found in: {os.path.abspath(sheets_dir)}')
 
     if args['output_dir'] is not None:
         output_dir = args['output_dir']

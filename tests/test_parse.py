@@ -110,3 +110,17 @@ def test_parse_warns_1():
     # Since this question has no question section, it should throw a warn
     assert obj.questions[1].text_usr == '' # not too wed to this behavior
     assert obj.questions[1].parse_warns[0] == 'text_usr is None'
+
+def test_meta_cascade_1():
+
+    input_md = './tests/data/input-five.md'
+    input_schema = './lime/data/md-schema.yaml'
+
+    obj = parse_to_obj(input_md, input_schema)
+
+    # Basic tests that should always hold
+    assert obj.name == 'Sheet-Five'
+    assert len(obj.questions) == 2
+
+    obj.questions[1].meta.get('answer_suggested_length') == '10'  # should be set from sheet-level meta
+    obj.questions[0].meta.get('answer_suggested_length') == '15'  # should be overridden by question-level meta

@@ -34,6 +34,7 @@ lime eval
   [ -d <input_dir>]     # input-directory
   [ -m <model_name>]    # model name
   [ -v <verbose_int>]   # verbose level
+  [ --debug]            # if set, print full stack trace on exception
 ```
 
 Run a specified model on a specified sheet (or directory of sheets) and create an output file in the directory of the input sheet. If a directory is specified as an input one, outputs file per input-sheet) and applies grading after processing the models.
@@ -106,6 +107,22 @@ lime init dataset --simple
 set OPENAI_API_KEY=sk-...
 lime eval .
 lime agg . > agg-1.md
+```
+
+### Running Tests
+
+```bash
+# install the pytest if not installed, can be installed with
+pip install lime[dev]
+
+# from root directory...
+# run default tests
+pytest -vv tests/
+# without specifying tests/ directory, you won't pickup the pytest.ini
+# and thus won't get the `slow` tag register to preclude these tests from default
+
+# run slow tests - these are where local llm models are run
+pytest -vv -m slow tests/
 ```
 
 ### Outputs

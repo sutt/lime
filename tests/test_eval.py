@@ -85,7 +85,7 @@ def test_eval_basic_1():
     STUB_NTOKENS = {
         "usr": 30,
         "sys": 17,
-        "cmp": 11   # this is not certain, dont
+        "cmp": 11   # this is not certain, dont depend on it
     }
     ntokens = output.questions[0].ntokens
     ntokens = ntokens.model_dump()

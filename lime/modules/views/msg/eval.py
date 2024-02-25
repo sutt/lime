@@ -71,6 +71,8 @@ class SheetProgressMsg:
                 n_chars=self.n_chars
             )
             print(s, end='| ', flush=True)
+            if self.verbose == 1:
+                print('', flush=False)
         if self.verbose > 1:
             n_sys = q_out.ntokens.sys or 0
             n_usr = q_out.ntokens.usr or 0
@@ -82,7 +84,7 @@ class SheetProgressMsg:
                 n_chars=self.n_chars
             )
             print(s, end='| ', flush=True)
-        print('', flush=False)
+            print('', flush=False)
             
     
     def __call__(self, *args: Any, **kwds: Any) -> Any:
