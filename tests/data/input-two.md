@@ -33,6 +33,6 @@ A:
 #### question
 Q: What did the early bird get?
 A: 
-|EVAL-ENDCHAR|
+<EVAL-ENDCHAR>
 ...stuff
 ...stuff
