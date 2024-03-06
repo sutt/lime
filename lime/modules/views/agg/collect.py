@@ -6,16 +6,16 @@ from ...models.state import ConfigLoader
 MODEL_NAMES = ['gpt-3.5-turbo', 'gpt-4', 'llama_13b_chat']
 
 
-class DefaultSettings(ConfigLoader):
+class ExecSettings(ConfigLoader):
     output_sheet_prefix = 'output'
 
-DefaultSettings._initialize()
+ExecSettings._initialize()
 
 def get_json_result_fns(results_fp):
     results = os.listdir(results_fp)
     results = [r for r in results if r.endswith('.json')]
     results = [r for r in results 
-               if r.startswith(DefaultSettings.output_sheet_prefix)
+               if r.startswith(ExecSettings.output_sheet_prefix)
                ]
     return results
 
@@ -80,6 +80,7 @@ def question_table(result_fn, results_fp):
 def build_full_table(results_fp, result_fn):
     q_tbl = question_table(result_fn, results_fp)
     q_tbl = expand_object(q_tbl, 'grading')
+    q_tbl = expand_object(q_tbl, 'gen_params')
     tbl_info = sheet_table_info(result_fn, results_fp)
     for col_name, col_val in tbl_info.items():
         q_tbl[col_name] = col_val

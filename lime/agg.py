@@ -16,7 +16,11 @@ from lime.modules.views.agg.query import (
     input_by_model,
     all_sheets_all_questions,
     sheet_by_model_pct_correct,
+    question_by_runid_completion,
     model_input_results,
+)
+from lime.modules.views.agg.utils import (
+    fmt_text_field,
 )
 
 class DefaultSettings(ConfigLoader):
@@ -68,6 +72,35 @@ def do_aggregate(
 
     return
 
+def do_completions(
+    results_dir: str,
+    verbose: bool = False,
+):
+    try: data = build_data(results_dir)
+    except: print('bad build data')
+
+    # TODO - toggle --md mode vs --terminal mode:
+    #        changes params to `replaces` + `max_width`
+
+    data = fmt_text_field(
+        data, 
+        'completion', 
+        max_width=60,
+        max_height=7, 
+        max_chars=100,
+        replaces=[('\n', '<br>')],
+    )
+
+    add_index_cols = []
+
+    output  = '''### Questions/IDs: full Completions \n\n'''
+    output += format_multi_index(
+        question_by_runid_completion(data, add_index_cols=add_index_cols)
+        ).to_markdown(index=False)
+    output += '\n\n'
+    print(output)
+    
+
 
 def setup_parser(argparser):
 
@@ -75,6 +108,9 @@ def setup_parser(argparser):
                           ,help='Input directory')
     argparser.add_argument('-v', '--verbose',       action='store_true')
     argparser.add_argument('-b', '--debug',         action='store_true')
+
+    # special report types
+    argparser.add_argument('--completions',       action='store_true')
 
 
 def main(args):
@@ -92,7 +128,16 @@ def main(args):
     if not(os.path.isdir(input_dir)):
         raise BaseQuietError(f'Not a Directory: {input_dir}')
     
-    do_aggregate(
-        results_dir=input_dir,
-        verbose=args['verbose'],
-    )
+    if args.get('completions'):
+
+        do_completions(
+            results_dir=input_dir,
+            verbose=args['verbose'],
+        )
+
+    else:
+        
+        do_aggregate(
+            results_dir=input_dir,
+            verbose=args['verbose'],
+        )

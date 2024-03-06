@@ -41,7 +41,7 @@ from lime.modules.models.errs import (
 
 
 class ExecSettings(ConfigLoader):
-    verbose = 1
+    verbose = 0
     uuid_digits = 4
     model_name = 'gpt-3.5-turbo'
     input_sheet_prefix = 'input'
@@ -189,7 +189,7 @@ def setup_parser(parser):
     parser.add_argument('-m', '--model_name',    type=str)
     parser.add_argument('-o', '--output_dir',    type=str)
     parser.add_argument('-y', '--dry_run',       action='store_true')
-    parser.add_argument('-v', '--verbose',       action='count', default=0)
+    parser.add_argument('-v', '--verbose',       action='count')
     parser.add_argument('-b', '--debug',         action='store_true')
     
 
@@ -249,9 +249,9 @@ def main(args):
 
     input_schema_fn = os.path.join(script_dir, 'data', 'md-schema.yaml')
 
-    model_name      = get_setting(args, 'model_name')
+    model_name      = get_setting(args, 'model_name', )
     dry_run         = get_setting(args, 'dry_run', default=False)
-    verbose_level   = get_setting(args, 'verbose')
+    verbose_level   = get_setting(args, 'verbose', default=0)
     
     run_id = uuid.uuid4().hex[:ExecSettings.uuid_digits]
 

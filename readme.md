@@ -102,11 +102,32 @@ pip install -e .
 
 ### Hello World
 
+Head into a clean directory, outside of lime, and run the following:
+
 ```bash
 lime init dataset --simple
 set OPENAI_API_KEY=sk-...
-lime eval .
-lime agg . > agg-1.md
+lime eval . -v
+lime agg .
+```
+
+### Further
+
+```bash
+lime grade output-common-sense-1-gpt-3.5-turbo-aaff.json -l
+lime grade output-common-sense-1-gpt-3.5-turbo-aaff.json -l -w
+
+lime grade output-common-sense-2-gpt-3.5-turbo-aaff.json -i input-common-sense-2.md
+lime grade output-common-sense-2-gpt-3.5-turbo-aaff.json -i input-common-sense-2.md -w
+
+lime agg > agg1.md
+```
+
+```bash
+lime check
+lime init config --workspace
+# edit the .lime/config.yaml file
+
 ```
 
 ### Running Tests

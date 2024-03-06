@@ -48,6 +48,18 @@ def sheet_by_model_pct_correct(data):
     )
     return tmp
 
+def question_by_runid_completion(data, add_index_cols = []):
+    index_cols = ['name', 'run_id'] + add_index_cols
+    tmp = (data
+        .groupby(by=index_cols)
+        .agg({
+            # 'completion': lambda x: ''.join(x if x is not None else ''),        
+            'completion': lambda x: x,        
+        })
+    )
+    return tmp
+
+
 
 def model_input_results(
     data,

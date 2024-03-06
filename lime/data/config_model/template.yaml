@@ -13,12 +13,12 @@ LocalParams:
   temperature: 0.0
   max_tokens: 200
   seed: null
-  default_model: 'gpt-3.5-turbo'
 
 ExecSettings:
-  verbose: 1
+  verbose: 1                      # different than configless default which is 0
   uuid_digits: 4
   input_sheet_prefix: 'input'
   output_sheet_prefix: 'output'
+  # model_name: 'gpt-3.5-turbo'   # set to replace -m flag in eval, default is already set in script
   use_prompt_caching: True
   save_tmp_file: True
