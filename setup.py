@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 setup(
     name='lime',
     version='0.1',
-    description='cli tool for microframework on llm evals',
+    description='cli-based micro-framework for llm evals',
     author='Will Sutton',
     author_email='wsutton17@gmail.com',
     packages=find_packages(),
@@ -15,6 +15,7 @@ setup(
         'tabulate',
         'openai',
         'tiktoken',
+        'flask',
     ],
     extras_require={
         'dev': ['pytest', 'jupyter', 'llama_cpp_python'],

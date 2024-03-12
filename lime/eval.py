@@ -77,6 +77,9 @@ def eval_sheet(
     if model_name.startswith('gpt'):
         model_cache = None
         infer_params = {}
+    elif model_name.startswith('cpl'):
+        model_cache = None
+        infer_params = {}
     else:
         model_cache = ModelCacheFactory().get()
         local_model = model_cache.get()

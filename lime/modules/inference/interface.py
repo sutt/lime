@@ -11,6 +11,11 @@ from .local_cpp import (
     llama_cpp_loaded,
     get_model_fn,
 )
+from .cpl_client import (
+    infer_cpl,
+    check_cpl,
+
+)
 
 
 class ModelCacheFactory:
@@ -25,6 +30,9 @@ def valid_model_name(model_name: str) -> bool:
         if check_key_is_valid():
             return True
         return False
+    elif model_name.startswith('cpl'):
+        b_valid = check_cpl()
+        return b_valid
     elif llama_cpp_loaded:
         try: 
             _ = get_model_fn(model_name)
@@ -36,7 +44,7 @@ def valid_model_name(model_name: str) -> bool:
 
 
 def count_tokens(text: str, model_name: str) -> int:
-    if model_name.startswith('gpt'):
+    if model_name.startswith('gpt') or model_name.startswith('cpl'):
         return get_num_tokens(text, model_name)
     else:
         m = LocalModel(model_name, vocab_only=True)
@@ -77,7 +85,15 @@ def prompt_model(
         except Exception as e:
             error = e
             answer = None
-
+    elif model_name.startswith('cpl'):
+        try:
+            answer = infer_cpl(
+                prompt=(prompt_sys or '') + prompt_usr,
+                sig_type='BasicQA',
+            )
+        except Exception as e:
+            error = e
+            answer = None
     elif llama_cpp_loaded:        
         try:
             if ((model_cache is not None) and

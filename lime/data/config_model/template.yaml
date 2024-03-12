@@ -22,3 +22,8 @@ ExecSettings:
   # model_name: 'gpt-3.5-turbo'   # set to replace -m flag in eval, default is already set in script
   use_prompt_caching: True
   save_tmp_file: True
+
+CplServer:
+  domain: localhost
+  port: 5000
+  debug: True
