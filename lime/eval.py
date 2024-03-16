@@ -30,6 +30,7 @@ from lime.modules.inference.interface import (
     count_tokens,
     extract_gen_params,
     ModelCacheFactory,
+    get_infer_obj,
 )
 from lime.modules.models.state import (
     ConfigLoader
@@ -55,6 +56,7 @@ ExecSettings._initialize()
 def eval_sheet(
     sheet_obj: SheetSchema,
     model_name: str,
+    infer_obj: Any,
     run_id: str,
     tmp_output_fn: str = None,
     verbose_level: int = 0,
@@ -74,6 +76,9 @@ def eval_sheet(
         questions = [],
     )
     
+    # This is where we want to init Model:
+    # - add the gen_params 
+    # - ModelCache if applicable
     if model_name.startswith('gpt'):
         model_cache = None
         infer_params = {}
@@ -88,6 +93,7 @@ def eval_sheet(
     sheet_gen_params = extract_gen_params(sheet_obj.meta)
     infer_params.update({'gen_params': sheet_gen_params})
     output.header.infer_params = infer_params
+    #  Order of these lines can be reversed with above
 
     progress.pre_loop(sheet_obj)
     
@@ -257,14 +263,17 @@ def main(args):
     verbose_level   = get_setting(args, 'verbose', default=0)
     
     run_id = uuid.uuid4().hex[:ExecSettings.uuid_digits]
-
-    if not valid_model_name(model_name):
-        raise BaseQuietError(f'Invalid model_name: {model_name}')
     
     progress = MainProgressMsg(verbose_level=verbose_level)
 
     progress.pre_loop(sheet_fns=sheet_fns)
-        
+
+    try:
+        infer_obj = get_infer_obj(model_name)
+        progress.infer_init(infer_obj, infer_obj.check_valid())
+    except Exception as e:
+        raise BaseQuietError(f'Error creating / checking infer_obj: {str(e)}')
+    
     for sheet_fn in sheet_fns:
         
         tmp_fn = sheet_fn.replace(input_dir, '')
@@ -287,12 +296,15 @@ def main(args):
         progress.pre_sheet(sheet_obj)
         
         if dry_run:
+            output = None
+            # TODO - we want to proceed into eval_sheet eventually
             continue
 
         try:
             output = eval_sheet(
                 sheet_obj=sheet_obj,
                 model_name=model_name,
+                infer_obj=infer_obj,
                 run_id=run_id,
                 tmp_output_fn=tmp_output_fp,
                 verbose_level= verbose_level,

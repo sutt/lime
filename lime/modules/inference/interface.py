@@ -1,4 +1,4 @@
-from typing import Union, Any
+from typing import Union, Any, Dict, List
 from .oai_api import (
     submit_prompt, 
     get_completion,
@@ -122,3 +122,110 @@ def prompt_model(
         answer = None
 
     return answer, error
+
+# refactor section
+
+# break the valid_model_name into two parts
+
+
+class ModelObj:
+    def __self__(self, model_name: str):
+        self.model_name : str = model_name
+        self.gen_params : dict = {}
+    def extract_gen_params(self, meta_data: dict) -> Dict[Any, Any]:
+        return self.gen_params
+    def set_gen_params(self, gen_params: dict) -> None:
+        self.gen_params = self.validate_gen_params(gen_params)
+    def check_valid(self, **kwargs) -> bool:
+        raise NotImplementedError
+    def count_tokens(self, text: str) -> int:
+        raise NotImplementedError
+    def validate_gen_params(self, gen_params: dict) -> dict:
+        raise NotImplementedError    
+    def prompt_model(self, 
+                     prompt_sys: str, 
+                     prompt_usr: str, 
+                     progress_cb: callable = lambda x: None,
+                     **kwargs
+                     ) -> Any:
+        raise NotImplementedError
+    def parse_completion_obj(self, completion: Any) -> Any:
+        raise NotImplementedError
+
+
+
+class OpenAIModelObj(ModelObj):
+    def __init__(self) -> None:
+        super().__init__()
+
+    def check_valid(self, **kwargs) -> bool:
+        if not(check_key_is_valid()):
+            raise ValueError('OpenAI API key not valid')
+        return True
+
+
+class LocalModelObj(ModelObj):
+    def __init__(self) -> None:
+        super().__init__()
+
+    def check_valid(self, **kwargs) -> bool:
+        _ = get_model_fn(self.model_name)
+        return True
+
+
+class CPLModelObj(ModelObj):
+    def __init__(self) -> None:
+        super().__init()
+
+    def check_valid(self, **kwargs) -> bool:
+        return check_cpl()
+
+    def prompt_model(self, 
+                     prompt_sys: str, 
+                     prompt_usr: str, 
+                     progress_cb: callable = None,
+                     **kwargs
+                     ) -> Any:
+        return infer_cpl(
+            prompt=(prompt_sys or '') + prompt_usr,
+            sig_type='BasicQA',
+        )
+
+    def parse_completion_obj(self, completion: Any) -> Any:
+        return completion
+
+    def count_tokens(self, text: str) -> int:
+        return get_num_tokens(text, self.model_name)
+
+    def validate_gen_params(self, gen_params: dict) -> dict:
+        return gen_params
+
+
+# TODO - build a type of InferObj
+# InferObj: Union[
+#         OpenAIModelObj, 
+#         LocalModelObj, 
+#         CPLModelObj
+#     ]:
+
+def get_infer_obj(
+        model_name: str
+    ) -> Union[
+        OpenAIModelObj, 
+        LocalModelObj, 
+        CPLModelObj
+    ]:
+
+    # TODO - check for model_name in configs, and it's associated type
+    if model_name.startswith('gpt'):
+        return OpenAIModelObj(model_name)
+    
+    elif model_name.startswith('cpl'):
+        return CPLModelObj(model_name)
+    
+    elif llama_cpp_loaded:
+        return LocalModelObj(model_name)
+    
+    else:
+        raise ValueError(f'model_name {model_name} not recognized')
+

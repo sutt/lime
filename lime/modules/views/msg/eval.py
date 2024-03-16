@@ -1,5 +1,5 @@
 import sys, json
-from typing import Any, List
+from typing import Any, List, Union
 from lime.modules.models.internal import (
     QuestionSchema,
     SheetSchema,
@@ -98,6 +98,16 @@ class MainProgressMsg:
             **kwargs
         ):
         self.verbose = verbose_level
+        
+    def infer_init(self, infer_obj: Any, check_valid: bool) -> None:
+        if self.verbose > 0:
+            msg =  f'Model_name: {infer_obj.model_name} | '
+            msg += f'Model type: {type(infer_obj)} | '
+            msg += f'is_valid: {check_valid}'
+            print(msg)
+        if self.verbose > 1:
+            # TODO - get extra info here
+            pass
 
     def pre_loop(
             self,
@@ -110,8 +120,9 @@ class MainProgressMsg:
     
     def post_loop(
             self,
-            output: SheetOutputSchema,
+            output: Union[SheetOutputSchema, None],
         ) -> None:
+        if output is None: return
         if self.verbose > 0:
             print(f'complete run_id: {output.header.run_id}')
 
