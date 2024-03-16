@@ -8,12 +8,18 @@ def format_multi_index(df):
     '''
         used for printing multi-index dataframes to markdown
     '''
+    b_multi_index_cols = isinstance(df.columns, pd.MultiIndex)
     if len(df.columns) == 0:
         return pd.DataFrame(df.index.to_list(), columns=df.index.names)
     else:
         left = pd.DataFrame(df.index.to_list(), columns=df.index.names)
         right = df.reset_index(drop=True)
-        return pd.concat([left, right], axis=1)
+        df = pd.concat([left, right], axis=1)
+    if b_multi_index_cols:
+        # slight bug, top left corner might be string (instead of tuple), 
+        # need to do this on a per-column basis
+        df.columns = ['\n'.join(col) for col in df.columns]
+    return df
 
 
 def input_by_model(data):
@@ -59,7 +65,29 @@ def question_by_runid_completion(data, add_index_cols = []):
     )
     return tmp
 
+def grade_discrepancy_by_runid(data, add_index_cols = [], add_values = []):
+    question_names_by_models = pd.pivot(
+        data, 
+        index='name', 
+        columns=['model_name', 'run_id'] + add_index_cols, 
+        values=['grade_bool'] + add_values
+    )
 
+    # Create a boolean mask for rows where grade_bool values differ
+    grade_bool_cols = [col for col in question_names_by_models.columns if col[0] == 'grade_bool']
+    grade_bool_diff_mask = question_names_by_models[grade_bool_cols].apply(
+        lambda x: x.dropna().nunique() > 1, axis=1
+    )
+
+    # Create a boolean mask for rows to keep
+    keep_mask = grade_bool_diff_mask.copy()
+    for col in question_names_by_models.columns:
+        if col[0] != 'grade_bool':
+            keep_mask &= grade_bool_diff_mask
+    
+    tmp = question_names_by_models[keep_mask]
+    
+    return tmp
 
 def model_input_results(
     data,

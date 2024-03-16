@@ -21,7 +21,7 @@ def fmt_text_field(
         try: texts = texts.map(lambda x: '\n'.join(x.split('\n')[:max_height]))
         except: pass
     if max_chars:
-        try: texts = texts.map(lambda x: x[:max_chars] + '...' if len(x) > max_chars else '')
+        try: texts = texts.map(lambda x: x[:max_chars] + '...' if len(x) > max_chars else x)
         except: pass
     for replace in replaces:
         target, replacement = replace

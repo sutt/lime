@@ -6,8 +6,11 @@ A homebrewed Language Model Eval tool.  Specifically a cli pipeline to:
     - process these datasets into openai api and locally deployed llamas models
     - automatically grade the results
  - Aggregate / summarize / compare the results.
+ - Run the eval against Custom PipeLine (`cpl-`) apps.
 
 This was built on a [Wordle dataset](https://github.com/sutt/wordle-qa-2) which uses different multiple-choice questions about rules/strategy/reasoning for the game (e.g. JSON representation).
+
+TODO - link to hello-qa dataset
 
 TODO - insert a diagram
 
@@ -30,8 +33,6 @@ In addition there are supplementary commands:
 ```
 lime eval
   [<input>]             # input-sheet or input-directory
-  [ -f <input_fn>]      # input-sheet
-  [ -d <input_dir>]     # input-directory
   [ -m <model_name>]    # model name
   [ -v <verbose_int>]   # verbose level
   [ --debug]            # if set, print full stack trace on exception
@@ -43,8 +44,11 @@ Run a specified model on a specified sheet (or directory of sheets) and create a
 
 ```
 lime agg
-  <input_dir>             # input-sheet or input-directory
-  [ -v <verbose_int>]     # verbose level
+  <input_glob>            # glob pattern for input json files
+  [-v <verbose_int>]      # verbose level
+  [--completions]         # table of formatted completions
+  [--discrepancies]       # rows that have diff in grading
+  [--discrepancies-full]  # rows that have diff in grading with respective completions
 ```
 
 Generated summary tables of aggregation and comparison for all all output-*.json files found in the supplied input directory. Outputs this data as markdown format (from pandas) to stdout. Redirect stdout to a file to save the output, e.g. `lime agg ./data/outputs/ > ./data/outputs/agg-1.md`.
@@ -120,7 +124,7 @@ lime grade output-common-sense-1-gpt-3.5-turbo-aaff.json -l -w
 lime grade output-common-sense-2-gpt-3.5-turbo-aaff.json -i input-common-sense-2.md
 lime grade output-common-sense-2-gpt-3.5-turbo-aaff.json -i input-common-sense-2.md -w
 
-lime agg > agg1.md
+lime agg . > agg1.md
 ```
 
 ```bash
@@ -145,6 +149,10 @@ pytest -vv tests/
 # run slow tests - these are where local llm models are run
 pytest -vv -m slow tests/
 ```
+
+### Custom PipeLine - CPL Apps
+
+TODO - add more info on Custom PipeLine
 
 ### Outputs
 

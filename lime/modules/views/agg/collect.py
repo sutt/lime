@@ -1,9 +1,8 @@
 import os
 import json
+import glob
 import pandas as pd
 from ...models.state import ConfigLoader
-
-MODEL_NAMES = ['gpt-3.5-turbo', 'gpt-4', 'llama_13b_chat']
 
 
 class ExecSettings(ConfigLoader):
@@ -11,38 +10,16 @@ class ExecSettings(ConfigLoader):
 
 ExecSettings._initialize()
 
+
 def get_json_result_fns(results_fp):
-    results = os.listdir(results_fp)
+    results = glob.glob(results_fp)
+    results = [r for r in results if os.path.isfile(r)]
     results = [r for r in results if r.endswith('.json')]
     results = [r for r in results 
-               if r.startswith(ExecSettings.output_sheet_prefix)
+               if os.path.split(r)[1].startswith(ExecSettings.output_sheet_prefix)
                ]
     return results
 
-
-def parse_sheet_meta(result_fn):
-    '''currently deprecated and not used'''
-
-    result_fn = result_fn.lower()
-    result_fn = result_fn[:result_fn.find('.json')]
-    run_id = result_fn.split('-')[-1]
-
-    result_fn = '-'.join((result_fn.split('-')[:-1]))
-    model_name = 'unknown'
-    for _name in MODEL_NAMES:
-        if _name in result_fn:
-            model_name = _name
-            result_fn = result_fn.replace(_name, '')
-
-    input_name = result_fn.replace('output-', '')
-    if input_name.endswith('-'):
-        input_name = input_name[:-1]
-
-    return {
-        'input_name':   input_name, 
-        'model_name':   model_name, 
-        'run_id':       run_id,
-    }
 
 def expand_object(
     data: pd.DataFrame, 
@@ -59,8 +36,8 @@ def expand_object(
         return data
 
 
-def sheet_table_info(result_fn, results_fp):
-    with open(os.path.join(results_fp, result_fn)) as f:
+def sheet_table_info(result_fn: str):
+    with open(result_fn) as f:
         data = json.load(f)
     header_data = data.get('header')
     return {
@@ -71,17 +48,17 @@ def sheet_table_info(result_fn, results_fp):
     }
 
 
-def question_table(result_fn, results_fp):
-    with open(os.path.join(results_fp, result_fn)) as f:
+def question_table(result_fn: str):
+    with open(result_fn) as f:
         data = json.load(f)
     return pd.DataFrame(data['questions'])
 
 
-def build_full_table(results_fp, result_fn):
-    q_tbl = question_table(result_fn, results_fp)
+def build_full_table(result_fn: str):
+    q_tbl = question_table(result_fn)
     q_tbl = expand_object(q_tbl, 'grading')
     q_tbl = expand_object(q_tbl, 'gen_params')
-    tbl_info = sheet_table_info(result_fn, results_fp)
+    tbl_info = sheet_table_info(result_fn)
     for col_name, col_val in tbl_info.items():
         q_tbl[col_name] = col_val
     return q_tbl
@@ -91,5 +68,5 @@ def build_data(results_fp):
     result_fns = get_json_result_fns(results_fp)
     tbls = []
     for result_fn in result_fns:
-        tbls.append(build_full_table(results_fp, result_fn))
+        tbls.append(build_full_table(result_fn))
     return pd.concat(tbls)
