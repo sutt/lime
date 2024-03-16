@@ -1,4 +1,4 @@
-# LIME - Eval-Pipeline
+# LIME - Micro-framework for Evals
 
 A homebrewed Language Model Eval tool.  Specifically a cli pipeline to:
  - Parse question/answer datasets in markdown format:
@@ -34,7 +34,7 @@ In addition there are supplementary commands:
 lime eval
   [<input>]             # input-sheet or input-directory
   [ -m <model_name>]    # model name
-  [ -v <verbose_int>]   # verbose level
+  [ -v <verbose_int>]   # verbose level, can use -vv style, default 0
   [ --debug]            # if set, print full stack trace on exception
 ```
 
@@ -45,13 +45,22 @@ Run a specified model on a specified sheet (or directory of sheets) and create a
 ```
 lime agg
   <input_glob>            # glob pattern for input json files
-  [-v <verbose_int>]      # verbose level
+  [-v <verbose_int>]      # verbose level (prints extra info to stderr)
+  [--md]                  # output optimized for disply in file
+  [--terminal]            # output optimized for disply in terminal
+  [--no-format]           # no justification or formatting applied to tables
   [--completions]         # table of formatted completions
   [--discrepancies]       # rows that have diff in grading
   [--discrepancies-full]  # rows that have diff in grading with respective completions
 ```
 
-Generated summary tables of aggregation and comparison for all all output-*.json files found in the supplied input directory. Outputs this data as markdown format (from pandas) to stdout. Redirect stdout to a file to save the output, e.g. `lime agg ./data/outputs/ > ./data/outputs/agg-1.md`.
+**Basic:** Generated summary tables of aggregation and comparison for all all output-*.json files found in the supplied input directory. Outputs this data as markdown format (from pandas) to stdout. Redirect stdout to a file to save the output, e.g. `lime agg ./data/outputs/ > ./data/outputs/agg-1.md`. 
+
+**Formatting / Style:** Should auto-detect if the output is going to a terminal or a file and format appropriately, but you can also manually specify this with the `--md` or `--terminal` flags. When piping into `less` use the `--terminal` flag to get the best formatting. Add the `--no-format` flag to always get the full output without formatting.
+
+**Filtering with Globs:** We can use globs to filter the input files, e.g. `lime agg ./aggfiles/*gpt-3.5*` to aggregate all output files that inclue this string in the word.
+
+**Report Types:** By default, the output is a summary of the model runs, but you can also specify to output the `--completions`, `--discrepancies`, or `--discrepancies-full` reports as args here.
 
 
 ##### Grade (or re-grade) the output of a model run - `lime grade <output> [args]`:

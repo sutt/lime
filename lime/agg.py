@@ -66,8 +66,10 @@ def build_data_message(
         print(f'unique sheets:   {data["input_name"].nunique()}', file=sys.stderr)
 
 
-def do_aggregate(
+def do_summarize(
     data: pd.DataFrame,
+    md_style: bool = False,
+    no_format: bool = False,
     ) -> str:
 
     output = ''
@@ -75,6 +77,7 @@ def do_aggregate(
     output += '''### Leaderboard: `{input_sheet, model}` on `pct_correct`\n\n'''
     output += format_multi_index(
         sheet_by_model_pct_correct(data)
+        ,md_style=md_style
         ).to_markdown(index=False)
     output += '\n\n'
 
@@ -83,9 +86,12 @@ def do_aggregate(
     output += '\n\n'
 
     output += '''### All Questions: list of all question names by sheet\n\n'''
+    tmp_df = all_sheets_all_questions(data)
+    if (not(md_style) and not(no_format)):
+        tmp_df = tmp_df.head(10)
     output += format_multi_index(
-        all_sheets_all_questions(data)
-        .head(10)
+        tmp_df
+        ,md_style=md_style
         ).to_markdown(index=False)
     output += '\n\n'
 
@@ -94,22 +100,27 @@ def do_aggregate(
 
 def do_completions(
     data: pd.DataFrame,
+    md_style: bool = False,
+    no_format: bool = False,
     ) -> str:
 
-    data = fmt_text_field(
-        data, 
-        'completion', 
-        max_width=60,
-        max_height=7, 
-        max_chars=30,
-        replaces=[('\n', '<br>')],
-    )
+    if not(no_format):
+
+        data = fmt_text_field(
+            data, 
+            'completion', 
+            max_width=60 if md_style else 30,
+            max_height=7 if md_style else 3, 
+            max_chars=300 if md_style else 30,
+            replaces=[('\n', '<br>')] if md_style else [],
+        )
     
     add_index_cols = []
 
     output  = '''### Questions/IDs: full Completions \n\n'''
     output += format_multi_index(
         question_by_runid_completion(data, add_index_cols=add_index_cols)
+        ,md_style=md_style
         ).to_markdown(index=False)
     output += '\n\n'
     
@@ -118,6 +129,7 @@ def do_completions(
 
 def do_discrepancies(
     data: pd.DataFrame,
+    md_style: bool = False,
     is_full: bool = False,
     ) -> str:
     
@@ -126,7 +138,7 @@ def do_discrepancies(
         data = fmt_text_field(
             data, 
             'completion', 
-            max_chars=30,
+            max_chars=300 if md_style else 20,
         )
 
     add_values = ['completion'] if is_full else []
@@ -134,6 +146,7 @@ def do_discrepancies(
     output  = '''### Model/RunIDs: rows where grade_bool has discrepancy \n\n'''
     output += format_multi_index(
         grade_discrepancy_by_runid(data, add_values=add_values)
+        ,md_style=md_style
     ).to_markdown(index=False)
     output += '\n\n'
     
@@ -146,6 +159,11 @@ def setup_parser(argparser):
                           ,help='Input directory')
     argparser.add_argument('-v', '--verbose',       action='store_true')
     argparser.add_argument('-b', '--debug',         action='store_true')
+
+    # styling options
+    argparser.add_argument('--md',                  action='store_true')
+    argparser.add_argument('--terminal',            action='store_true')
+    argparser.add_argument('--no-format',           action='store_true', dest='no-format')
 
     # special report types
     argparser.add_argument('--completions',         action='store_true')
@@ -172,33 +190,56 @@ def main(args):
         verbose=args.get('verbose'),
     )
 
-    # TODO - toggle --md mode vs --terminal mode:
-    # changes params to `replaces` + `max_width`
+    # could add a dry-run here to just view how the data is sliced up
+
+    # default is to style to optimize print to terminal
+    # if we detect redirect then we want to style for markdown
+    # or allow explicit args to override the default
+    md_style = False
+    if (
+        (not(sys.stdout.isatty()) and not args.get('terminal'))
+         or args.get('md')
+        ):
+        md_style = True
+        # TODO - add a warning here 
+        # TODO - this doesn't catch pipe-to-less on windows...
+        # ... so workaround is to add the --terminal when piping to less. 
+        # but the following works for linux:
+        # elif sys.stdout.seekable(): print("output to a file.") # e.g. python cmd.py > file.txt   
+        # else: print("output to another command.") # e.g. python cmd.py | less
     
+    no_format = args.get('no-format')
+
+    # perform the requested report
+
     if args.get('completions'):
 
         s_output = do_completions(
             data=data,
+            md_style=md_style,
         )
     
     elif args.get('discrepancies'):
         
         s_output = do_discrepancies(
             data=data,
+            md_style=md_style,
         )
     
     elif args.get('discrepancies-full'):
         
         s_output = do_discrepancies(
             data=data,
+            md_style=md_style,
             is_full=True,
         )
     
     # default report condition
     else:
         
-        s_output = do_aggregate(
+        s_output = do_summarize(
             data=data,
+            md_style=md_style,
         )
 
     # TODO - may need post-processing

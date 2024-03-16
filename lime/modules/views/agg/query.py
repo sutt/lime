@@ -4,7 +4,7 @@ import json
 from .collect import build_data
 
 
-def format_multi_index(df):
+def format_multi_index(df: pd.DataFrame, md_style: bool = False):
     '''
         used for printing multi-index dataframes to markdown
     '''
@@ -16,9 +16,9 @@ def format_multi_index(df):
         right = df.reset_index(drop=True)
         df = pd.concat([left, right], axis=1)
     if b_multi_index_cols:
-        # slight bug, top left corner might be string (instead of tuple), 
-        # need to do this on a per-column basis
-        df.columns = ['\n'.join(col) for col in df.columns]
+        lc_char = '<br>' if md_style else '\n'
+        df.columns = [(col if isinstance(col, str) else lc_char.join(col)) 
+                      for col in df.columns]
     return df
 
 
@@ -73,13 +73,11 @@ def grade_discrepancy_by_runid(data, add_index_cols = [], add_values = []):
         values=['grade_bool'] + add_values
     )
 
-    # Create a boolean mask for rows where grade_bool values differ
     grade_bool_cols = [col for col in question_names_by_models.columns if col[0] == 'grade_bool']
     grade_bool_diff_mask = question_names_by_models[grade_bool_cols].apply(
         lambda x: x.dropna().nunique() > 1, axis=1
     )
 
-    # Create a boolean mask for rows to keep
     keep_mask = grade_bool_diff_mask.copy()
     for col in question_names_by_models.columns:
         if col[0] != 'grade_bool':
