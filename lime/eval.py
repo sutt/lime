@@ -1,4 +1,4 @@
-import os, time, uuid, sys
+import os, time, uuid, sys, traceback
 from datetime import datetime
 from typing import (
     Union, 
@@ -25,12 +25,9 @@ from lime.modules.grading.base import (
     grade_answer,
 )
 from lime.modules.inference.interface import (
-    prompt_model,
-    valid_model_name,
-    count_tokens,
-    extract_gen_params,
-    ModelCacheFactory,
+    extract_gen_params,  # maybe move to parse or utils
     get_infer_obj,
+    ModelObjVariant,
 )
 from lime.modules.models.state import (
     ConfigLoader
@@ -54,46 +51,31 @@ ExecSettings._initialize()
 
 
 def eval_sheet(
-    sheet_obj: SheetSchema,
-    model_name: str,
-    infer_obj: Any,
-    run_id: str,
-    tmp_output_fn: str = None,
-    verbose_level: int = 0,
+    sheet_obj:      SheetSchema,
+    infer_obj:      ModelObjVariant,
+    run_id:         str,
+    tmp_output_fn:  str = None,
+    verbose_level:  int = 0,
 ) -> SheetOutputSchema:
 
     progress = SheetProgressMsg(verbose_level=verbose_level)
     
+    sheet_gen_params = extract_gen_params(sheet_obj.meta)
+
+    infer_obj.update_gen_params(sheet_gen_params)
+
     output = SheetOutputSchema(
         header = HeaderOutput(
             sheet_name  = sheet_obj.name,
             sheet_fn    = sheet_obj.sheet_fn,
             run_id      = run_id,
-            name_model  = model_name,
+            name_model  = infer_obj.model_name,
+            infer_params= infer_obj.get_gen_params(),
             lime_version= get_lime_version(),
             start_time  = datetime.now(),
         ),
         questions = [],
     )
-    
-    # This is where we want to init Model:
-    # - add the gen_params 
-    # - ModelCache if applicable
-    if model_name.startswith('gpt'):
-        model_cache = None
-        infer_params = {}
-    elif model_name.startswith('cpl'):
-        model_cache = None
-        infer_params = {}
-    else:
-        model_cache = ModelCacheFactory().get()
-        local_model = model_cache.get()
-        infer_params = local_model.get_all_params()
-    
-    sheet_gen_params = extract_gen_params(sheet_obj.meta)
-    infer_params.update({'gen_params': sheet_gen_params})
-    output.header.infer_params = infer_params
-    #  Order of these lines can be reversed with above
 
     progress.pre_loop(sheet_obj)
     
@@ -101,20 +83,17 @@ def eval_sheet(
         
         t0 = time.time()
 
-        ntokens_usr = count_tokens(question.text_usr, model_name)
-        ntokens_sys = count_tokens(question.text_sys, model_name)
+        ntokens_usr = infer_obj.count_tokens(question.text_usr)
+        ntokens_sys = infer_obj.count_tokens(question.text_sys)
 
         gen_params = extract_gen_params(question.meta)
 
         progress.pre_prompt(question)
-        
-        completion, error = prompt_model(
-            model_name  = model_name,
+    
+        completion, error = infer_obj.prompt_model(
             prompt_sys  = question.text_sys,
             prompt_usr  = question.text_usr,
-            model_cache = model_cache,
-            verbose     = verbose_level,
-            gen_params  = gen_params,
+            **gen_params,
         )
         
         question_output = QuestionOutput(
@@ -129,7 +108,7 @@ def eval_sheet(
             eval_time       = time.time() - t0,
         )
 
-        ntokens_cmp = count_tokens(completion, model_name)
+        ntokens_cmp = infer_obj.count_tokens(completion)
 
         question_output.ntokens = NTokens(
             usr = ntokens_usr,
@@ -272,7 +251,8 @@ def main(args):
         infer_obj = get_infer_obj(model_name)
         progress.infer_init(infer_obj, infer_obj.check_valid())
     except Exception as e:
-        raise BaseQuietError(f'Error creating / checking infer_obj: {str(e)}')
+        raise BaseQuietError(f'Error creating infer_obj: {str(e)}', 
+                             traceback.format_exc())
     
     for sheet_fn in sheet_fns:
         
@@ -296,14 +276,13 @@ def main(args):
         progress.pre_sheet(sheet_obj)
         
         if dry_run:
-            output = None
             # TODO - we want to proceed into eval_sheet eventually
+            output = None
             continue
 
         try:
             output = eval_sheet(
                 sheet_obj=sheet_obj,
-                model_name=model_name,
                 infer_obj=infer_obj,
                 run_id=run_id,
                 tmp_output_fn=tmp_output_fp,
@@ -313,7 +292,7 @@ def main(args):
             print('Keyboard Interrupt.')
             sys.exit(1)
         except Exception as e:
-            raise BaseQuietError(f'Error processing sheet: {sheet_fn}: {e}')
+            raise BaseQuietError(f'Error processing sheet: {sheet_fn}: {str(e)}')
 
         with open(output_fp, 'w') as f:
             f.write(output.model_dump_json(indent=2))

@@ -18,7 +18,7 @@ from lime.modules.models.utils import (
     get_workspace_config_dir,
 )
 from lime.modules.inference.oai_api import (
-    check_key_is_valid
+    OpenAIModelObj,
 )
 from lime.modules.inference.local_cpp import (
     LocalParams,
@@ -100,7 +100,9 @@ def main(args):
     key = Secrets.get('OPENAI_API_KEY')
     if key is not None:
         key_fmt = key[:4] + '****'
-        is_valid = check_key_is_valid()
+        infer_obj = OpenAIModelObj('gpt-3.5-turbo')
+        try: is_valid = infer_obj.check_valid()
+        except: is_valid = False
         msg += f': {key_fmt}  found. is_valid={is_valid}'
     else:
         msg += ' not found.'

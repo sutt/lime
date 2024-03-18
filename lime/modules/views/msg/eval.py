@@ -102,7 +102,7 @@ class MainProgressMsg:
     def infer_init(self, infer_obj: Any, check_valid: bool) -> None:
         if self.verbose > 0:
             msg =  f'Model_name: {infer_obj.model_name} | '
-            msg += f'Model type: {type(infer_obj)} | '
+            msg += f'Model type: {infer_obj.__class__.__name__} | '
             msg += f'is_valid: {check_valid}'
             print(msg)
         if self.verbose > 1:

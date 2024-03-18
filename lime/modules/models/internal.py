@@ -66,7 +66,6 @@ class QuestionOutput(BaseModel):
     error:          Optional[str] = None
     eval_time:      float
     grading:        Optional[GradingOutput] = None
-    ntokens_usr:    Optional[int] = None
     ntokens:        Optional[NTokens] = None
 
 class SheetOutputSchema(BaseModel):

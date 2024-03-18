@@ -1,4 +1,5 @@
 import sys
+import traceback
 
 _DEBUG_MODE = False
 
@@ -8,12 +9,19 @@ class QuietError(Exception):
     # modify this to True to print full traceback
 
 class BaseQuietError(QuietError):
-    def __init__(self, message):
+    def __init__(self, message, orig_traceback=None):
         self.message = message
+        self.orig_traceback = orig_traceback
         super().__init__(self.message)
 
     def __str__(self):
-        return self.message
+        msg =  f'{self.message}'
+        # this doesn't seem needed right now, already prints it out if you do...
+        # BaseQuietError(f'Error creating infer_obj: {str(e)}', traceback.format_exc())
+        # if QuietError.debug_mode:
+        #     msg += f'\n\nOriginal Traceback:\n{self.orig_traceback}'
+        return msg
+        
 
 def quiet_hook(kind, message, traceback):
     if QuietError in kind.__bases__:

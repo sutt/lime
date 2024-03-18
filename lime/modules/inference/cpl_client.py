@@ -1,5 +1,13 @@
+from typing import (
+    Any,
+    Tuple,
+    Union,
+)
 import requests
-
+import tiktoken
+from .base import (
+    ModelObj,
+)
 from ..models.state import (
     ConfigLoader,
     Secrets,
@@ -26,37 +34,6 @@ configs = {
     }
 }
 
-def infer_cpl(
-        prompt: str,
-        sig_type: str = None,  # make this to kwargs type
-    ) -> str:
-    
-    base_url = 'http://' + CplServer.domain + ':' + str(CplServer.port) + '/'
-    end_point = 'infer'
-    
-    req_params = {}
-    req_params['sig_type'] = 'BasicQA',    # default for now
-    if sig_type is not None:
-        req_params['sig_type'] = sig_type
-    
-    data = {
-        'question': prompt,
-        **req_params,
-    }
-    
-    response = requests.post(base_url + end_point, json=data)
-    
-    if response.status_code == 200:
-        try:
-            result = response.json()
-            return result.get('answer')
-        except Exception as e:
-            raise ValueError(f'Error parsing infer_cpl response: {e}')
-    else:
-        try: server_err_text = response.json().get('error')
-        except: server_err_text = 'could not parse server error message'
-        raise ValueError(f'Error: {response.status_code} - {server_err_text}')
-    
 def check_cpl(
         **kwargs
     ) -> bool:
@@ -66,9 +43,77 @@ def check_cpl(
         response = requests.get(base_url + endpoint, timeout=5)
         data = response.json() 
         if data.get('status') != 'ok':
-            return False
+            raise ValueError(f'Error in cpl server check with status: {data}')
         return True
+    except requests.exceptions.RequestException as e:
+        raise ValueError(f'Error in cpl server check: {str(e)}')
     except Exception as e:
-        print(f'Error checking cpl server: {e}')
-        return False
+        raise ValueError(f'Error in cpl server check: {str(e)}')
+    
+
+class CPLModelObj(ModelObj):
+    
+    def __init__(self, model_name: str) -> None:
+        super().__init__(model_name)
+
+    def check_valid(self, **kwargs) -> bool:
+        return check_cpl()
+
+    def prompt_model(self, 
+                     prompt_sys: str = None, 
+                     prompt_usr: str = None, 
+                     progress_cb: callable = None,
+                     **kwargs
+                     ) -> Tuple[Union[str, None], Union[Exception, None]]:
+        
+        try:
+            
+            base_url = 'http://' + CplServer.domain + ':' + str(CplServer.port) + '/'
+            end_point = 'infer'
+            
+            req_params = {}
+
+            prompt = (
+                (prompt_sys if prompt_sys else '') +
+                (prompt_usr if prompt_usr else '')
+            )
+            
+            data = {
+                'question': prompt,
+                **req_params,
+            }
+            
+            response = requests.post(base_url + end_point, json=data)
+            
+            if response.status_code == 200:
+                try:
+                    result = response.json()
+                    completion = result.get('answer')
+                except Exception as e:
+                    raise ValueError(f'Error parsing infer_cpl response: {e}')
+            else:
+                try: server_err_text = response.json().get('error')
+                except: server_err_text = 'could not parse server error message'
+                raise ValueError(f'Error: {response.status_code} - {server_err_text}')
+            
+            return (completion, None)
+        
+        except Exception as e:
+            return (None, e)
+
+    def parse_completion_obj(self, completion: Any) -> Any:
+        return completion
+
+    def count_tokens(self, text: str) -> int:
+        '''TODO - switch on base model type: local or oai'''
+        # m = LocalModel(self.model_name, vocab_only=True)
+        # return m.num_tokens(text)
+        try:
+            return len(
+                tiktoken.encoding_for_model(self.model_name)
+                .encode(text)
+            )
+        except:
+            return -1
+
     

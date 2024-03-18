@@ -5,6 +5,11 @@ from contextlib import redirect_stderr
 from typing import (
     Dict,
     Any,
+    Tuple,
+    Union,
+)
+from .base import (
+    ModelObj,
 )
 from ..models.state import (
     ConfigLoader,
@@ -18,7 +23,9 @@ try:
     llama_cpp_loaded = True
 except ImportError:
     llama_cpp_loaded = False
-
+except Exception as e:
+    llama_cpp_loaded = False
+    raise ValueError(f'exception in importing llama_cpp: {e}')
 
 llama_log_obj = []
 
@@ -49,36 +56,6 @@ class CppInference:
     package_version = _get_package_version(default_package)
 
 
-class ChatTemplate:
-    template = '''{{{SYS}}}{{{USR}}}'''
-    default_templating_tag_left =  '''{{{'''
-    default_templating_tag_right = '''}}}'''
-    default_sys_tag = 'SYS'
-    default_usr_tag = 'USR'
-    left = None
-    right = None
-    
-    @classmethod
-    def wrap_prompt(
-            cls,
-            prompt: str = None,
-            sys_prompt: str = None,
-            usr_prompt: str = None,
-        ) -> str: 
-        pass
-
-
-class DefaultModelChatTemplates:
-    llama_7b = {
-        
-    }
-    mistral_hf_7b = {
-        'full': '',
-        'left': '',
-        'right': '',
-    }
-
-
 def suppress_stderr(func):
     def wrapper(*args, **kwargs):
         capture_stderr = io.StringIO()
@@ -93,6 +70,7 @@ def my_log_callback(level, message, user_data):
 
 log_callback = ctypes.CFUNCTYPE(None, ctypes.c_int, 
             ctypes.c_char_p, ctypes.c_void_p)(my_log_callback)
+
 
 def get_model_fn(model_name: str) -> str:
     try:
@@ -110,6 +88,7 @@ def get_model_fn(model_name: str) -> str:
     except Exception as e:
         raise ValueError(f'exception in get_model_fn: {e}')
         
+# TODO - Why is linter saying lower conditions not reachable?
 def wrap_prompt(
         prompt: str = None,
         sys_prompt: str = None,
@@ -148,6 +127,8 @@ def get_sample_args(args: Dict) -> Dict:
     sample_args = {k: args[k] for k in args if k in arg_names}
     sample_args = rename_llama_args(sample_args)
     return sample_args
+
+
 
 
 class LocalModel:
@@ -282,7 +263,88 @@ class LocalModelCache:
                 self.has_cache = True
                 self.sys_prompt = sys_prompt
         return self.model
+
+
+class LocalModelObj(ModelObj):
     
+    def __init__(self, model_name: str) -> None:
+        super().__init__(model_name)
+        self.model_fn = None
+        self.llm = None
+        self.prompt_model_params = [
+            'temperature',
+            'max_tokens',
+            'seed',
+        ]
+        self.init_params = {
+            'n_threads': 4,
+            'n_ctx': 512,
+        }
+
+    def check_valid(self, **kwargs) -> bool:
+        self.model_fn = get_model_fn(self.model_name)
+        if self.llm is None:
+            self.init_llm()
+        return True
+    
+    @suppress_stderr
+    def init_llm(self, **kwargs) -> None:
+        self.model_fn = get_model_fn(self.model_name)
+        llama_log_set(log_callback, ctypes.c_void_p())
+        self.llm = Llama(
+            model_path=get_model_fn(self.model_name), 
+            vocab_only=kwargs.get('vocab_only', False),
+            **self.init_params
+        )
+    
+    def count_tokens(self, text: str) -> int:
+        if self.llm is None:
+            self.init_llm()
+        try: return len(self.llm.tokenize(text.encode()))
+        except: return -1
+    
+    @suppress_stderr
+    def prompt_model(self,
+                    prompt_sys: str = None,
+                    prompt_usr: str = None,
+                    progress_cb: callable = None,
+                    **kwargs
+                    ) -> Tuple[Union[str, None], Union[Exception, None]]:
+        try:
+            
+            if self.llm is None:
+                self.init_llm()
+            
+            params = self.gen_params.copy()
+                
+            params.update({
+                k: v 
+                for k, v in kwargs.items()
+                if k in self.prompt_model_params
+            })
+
+            self.update_gen_params(params)
+
+            wrapped_prompt = wrap_prompt(
+                sys_prompt=prompt_sys,
+                usr_prompt=prompt_usr,
+            )
+
+            output = self.llm(
+                prompt=wrapped_prompt, 
+                **self.gen_params,
+            )
+
+            return self._get_completion(output), None
+        
+        except Exception as e:
+            return None, e
+    
+    @staticmethod
+    def _get_completion(output):
+        return output['choices'][0]['text']
+
+
 
 if __name__ == '__main__':
     
