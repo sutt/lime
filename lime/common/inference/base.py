@@ -25,8 +25,9 @@ class PromptModelResponse(NamedTuple):
 
 
 class ModelObj:
-    def __init__(self, model_name: str) -> None:
+    def __init__(self, model_name: str, **kwargs) -> None:
         self.model_name : str = model_name
+        self.use_prompt_cache : bool = kwargs.get('use_prompt_cache', False)
         self.gen_params : Dict[str, Any] = {
             'max_tokens':   LocalParams.max_tokens,
             'temperature':  LocalParams.temperature,

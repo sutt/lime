@@ -14,13 +14,17 @@ LocalParams:
   max_tokens: 200
   seed: null
 
+LocalModelInitParams:
+  n_ctx: 512
+  n_threads: 4
+
 ExecSettings:
   verbose: 1                      # different than configless default which is 0
   uuid_digits: 4
   input_sheet_prefix: 'input'
   output_sheet_prefix: 'output'
   # model_name: 'gpt-3.5-turbo'   # set to replace -m flag in eval, default is already set in script
-  use_prompt_caching: True
+  use_prompt_cache: True
   save_tmp_file: True
 
 CplServer:

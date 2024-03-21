@@ -44,7 +44,7 @@ class ExecSettings(ConfigLoader):
     model_name = 'gpt-3.5-turbo'
     input_sheet_prefix = 'input'
     output_sheet_prefix = 'output'
-    use_prompt_caching = True
+    use_prompt_cache = True
     save_tmp_file = False
 
 ExecSettings._initialize()
@@ -77,6 +77,18 @@ def eval_sheet(
         questions = [],
     )
 
+    sys_prompt = sheet_obj.text
+    ntokens_sys = infer_obj.count_tokens(sys_prompt)
+    
+    if infer_obj.use_prompt_cache:
+        infer_obj.init_llm()
+        if sys_prompt is not None:
+            infer_obj.eval_prompt(
+                prompt=sys_prompt, 
+                prompt_type='sys_prompt'
+            )
+            infer_obj.save_state()
+
     progress.pre_loop(sheet_obj)
     
     for question in sheet_obj.questions:
@@ -84,7 +96,7 @@ def eval_sheet(
         t0 = time.time()
 
         ntokens_usr = infer_obj.count_tokens(question.text_usr)
-        ntokens_sys = infer_obj.count_tokens(question.text_sys)
+        
 
         gen_params = extract_gen_params(question.meta)
 
@@ -240,6 +252,8 @@ def main(args):
     model_name      = get_setting(args, 'model_name', )
     dry_run         = get_setting(args, 'dry_run', default=False)
     verbose_level   = get_setting(args, 'verbose', default=0)
+
+    use_prompt_cache = ExecSettings.use_prompt_cache
     
     run_id = uuid.uuid4().hex[:ExecSettings.uuid_digits]
     
@@ -248,7 +262,10 @@ def main(args):
     progress.pre_loop(sheet_fns=sheet_fns)
 
     try:
-        infer_obj = get_infer_obj(model_name)
+        infer_constructor_args = {
+            'use_prompt_cache': use_prompt_cache,    
+        }
+        infer_obj = get_infer_obj(model_name, **infer_constructor_args)
         progress.infer_init(infer_obj, infer_obj.check_valid())
     except Exception as e:
         raise BaseQuietError(f'Error creating infer_obj: {str(e)}', 

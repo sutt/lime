@@ -84,6 +84,7 @@ def dataset_init(
     
     read_datasets_root = os.path.join(
         script_dir, 
+        '..',
         'data', 
         'datasets',
         dataset_root_dir,

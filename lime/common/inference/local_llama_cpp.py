@@ -129,147 +129,77 @@ def get_sample_args(args: Dict) -> Dict:
     sample_args = rename_llama_args(sample_args)
     return sample_args
 
-
-
-
-class LocalModel:
-    '''
-        use python_llama_cpp for inference
-    '''
-
-    def __init__(self, model_name:str=None, b_init:bool=True, **params):
-        
-        self.init_params = {
-            'n_threads': 4,
-            'n_ctx': 512,
-        }
-        self.init_params = {**self.init_params, **params}
-        self.gen_params = {
-            'temperature':  LocalParams.temperature,
-            'max_tokens':   LocalParams.max_tokens,
-            'seed':         LocalParams.seed,
-        }
-        self.llm : Llama = None
-        self.cached_state : LlamaState = None
-        self.b_init = False
-        if b_init:
-            self.init(model_name)
-        
-    @suppress_stderr
-    def init(self, model_name: str):
-        llama_log_set(log_callback, ctypes.c_void_p())
-        self.llm = Llama(
-            model_path=get_model_fn(model_name), 
-            **self.init_params
-        )
-        self.b_init = True
-
-    def set_gen_params(self, gen_params: Dict[str, Any]):
-        self.gen_params = {**self.gen_params, **gen_params}
-
-    def get_all_params(self):
-        return {
-            'init_params': self.init_params,
-            'gen_params': self.gen_params,
-            'pkg_version': {
-                # k:v for k,v in CppInference.__dict__
-                # if not k.startswith('_')
-            },
-        }
-
-    def __call__(self, prompt):
-        wrapped_prompt = wrap_prompt(prompt)
-        output = self.llm(
-            prompt=wrapped_prompt, 
-            **self.gen_params,
-        )
-        return output
     
-    def eval_prompt(self, prompt):
-        wrapped_prompt = wrap_prompt(sys_prompt=prompt)
-        tokenized_wrapped_prompt = self.llm.tokenize(wrapped_prompt.encode())
-        self.llm.reset()
-        self.llm.eval(tokenized_wrapped_prompt)
-
-    def num_tokens(self, text: str) -> int:
-        try:
-            tokens = self.llm.tokenize(text.encode())
-            return len(tokens)
-        except:
-            return -1
+class LocalModelCache:
+    
+    def __init__(self) -> None:
+        self.llm: Union[Llama, None] = None
+        self.cached_state : Union[LlamaState, None] = None
     
     @suppress_stderr
     def save_state(self):
         self.cached_state = self.llm.save_state()
 
     def load_state(self):
+        self.llm.reset()  # apply this if seed doesn't work?
         self.llm.load_state(self.cached_state)
-        
-    def eval_question(
+
+    def eval_prompt(
             self, 
-            question_text: str, 
-            verbose: int = 0,
-        ) -> Dict:
-        wrapped_text = wrap_prompt(usr_prompt=question_text)
-        tokens_question = self.llm.tokenize(wrapped_text.encode())
-        self.llm.eval(tokens_question)
-        seed = self.gen_params.get('seed')
-        if seed is not None: 
-            self.llm.set_seed(seed)
-        counter = 0
-        completion = ''
-        token = self.llm.sample(**get_sample_args(self.gen_params))
-        while token is not self.llm.token_eos() :
-            if counter >= self.gen_params.get('max_tokens', self.init_params.get('n_ctx')): 
-                break
-            else:
-                counter += 1
-            s_token = self.llm.detokenize([token]).decode()
-            completion += s_token
-            if verbose > 1:
-                print(s_token, end='', flush=True)
-            self.llm.eval([token])
+            prompt: str, 
+            prompt_type : str ='prompt'
+        ) -> None:
+        wrapped_prompt = wrap_prompt(**{prompt_type: prompt})
+        self.llm.eval(
+            self.llm.tokenize(wrapped_prompt.encode())
+        )
+        
+    def eval_sample_piecewise(
+            self, 
+            prompt: str, 
+            progress_cb: callable = None,
+        ) -> PromptModelResponse:
+        
+        try:
+            self.eval_prompt(prompt=prompt, prompt_type='usr_prompt')
+            
+            if self.gen_params.get('seed') is not None: 
+                self.llm.set_seed(self.gen_params.get('seed'))
+            
+            completion, counter = '', 1
+
             token = self.llm.sample(**get_sample_args(self.gen_params))
-        if verbose > 1: print(end='\n', flush=True)
-        return {
-            'text': completion,
-            'completion_tokens': counter,
-        }
-    
-    @staticmethod
-    def get_completion(output):
-        return output['choices'][0]['text']
-    
-    @staticmethod
-    def get_data(output):
-        data = {
-            'text': output['choices'][0]['text'],
-            'completion_tokens': output['usage']['completion_tokens'],
-        }
-        return data
+            
+            while token is not self.llm.token_eos() :
+                
+                s_token = self.llm.detokenize([token]).decode()
+                completion += s_token
+                
+                if progress_cb is not None:
+                    progress_cb(s_token)
 
-class LocalModelCache:
-    def __init__(self) -> None:
-        self.model: LocalModel = LocalModel(b_init=False)
-        self.has_cache: bool = False
-    def get(self, model_name:str=None, sys_prompt:str=None) -> LocalModel:
-        if model_name is not None:
-            if self.model.b_init is False:
-                self.model.init(model_name)
-            if self.has_cache:
-                self.model.load_state()
-            elif sys_prompt is not None:
-                self.model.eval_prompt(sys_prompt)
-                self.model.save_state()
-                self.has_cache = True
-                self.sys_prompt = sys_prompt
-        return self.model
+                if ((counter >= self.gen_params.get('max_tokens')) or
+                    (counter >= self.init_params.get('n_ctx'))
+                    ):
+                    break
+                else:
+                    counter += 1
+
+                self.llm.eval([token])
+                token = self.llm.sample(**get_sample_args(self.gen_params))
+            
+            return PromptModelResponse(completion, None)
+        
+        except Exception as e:
+            return PromptModelResponse(None, e)
+    
 
 
-class LocalModelObj(ModelObj):
+class LocalModelObj(ModelObj, LocalModelCache):
     
-    def __init__(self, model_name: str) -> None:
-        super().__init__(model_name)
+    def __init__(self, model_name: str, **kwargs) -> None:
+        ModelObj.__init__(self, model_name, **kwargs)
+        LocalModelCache.__init__(self)
         self.model_fn : Union[str, None] = None
         self.llm : Union[Llama, None] = None
         self.prompt_model_params :List[str] = [
@@ -306,25 +236,46 @@ class LocalModelObj(ModelObj):
     
     @suppress_stderr
     def prompt_model(self,
-                    prompt_sys: str = None,
-                    prompt_usr: str = None,
-                    progress_cb: callable = None,
-                    **kwargs
-                    ) -> PromptModelResponse:
+            prompt_sys: str = None,
+            prompt_usr: str = None,
+            progress_cb: callable = None,
+            **kwargs
+        ) -> PromptModelResponse:
+
         try:
-            
+
             if self.llm is None:
                 self.init_llm()
-            
-            params = self.gen_params.copy()
                 
-            params.update({
-                k: v 
-                for k, v in kwargs.items()
+            self.update_gen_params({
+                k: v for k, v in kwargs.items()
                 if k in self.prompt_model_params
             })
+            
+            if self.use_prompt_cache:
+                
+                self.load_state()
 
-            self.update_gen_params(params)
+                return self.eval_sample_piecewise(
+                    prompt=prompt_usr,
+                    progress_cb=progress_cb,
+                )
+                
+            else:
+                
+                return self.call_model(
+                    prompt_sys=prompt_sys,
+                    prompt_usr=prompt_usr,
+                )
+        
+        except Exception as e:
+            return PromptModelResponse(None, e)
+        
+    def call_model(self,
+            prompt_sys: str = None,
+            prompt_usr: str = None,
+        ) -> PromptModelResponse:
+        try:
 
             wrapped_prompt = wrap_prompt(
                 sys_prompt=prompt_sys,
@@ -353,27 +304,6 @@ if __name__ == '__main__':
     
     print("start...\n")
     
-    # local_model = LocalModel('llama_7b')
-    # prompt = 'Q: What is the largest planet? A: '
-    # output = local_model(prompt)
-    # print(output)
-    # text = LocalModel.get_completion(output)
-    # print(text)
-    # print("\nend.")
-
-    # local_model = LocalModel('mistral_hf_7b')
-    # prompt = 'Q: What is the largest planet? A: '
-    # output = local_model(prompt)
-    # print(output)
-    # text = LocalModel.get_completion(output)
-    # print(text)
-    
-    sys_prompt = '''
-In the following answer only with the shortest amount words possible.
-Only answer with the word(s) of the answer and don't include any other text.
-Use your common sense and traditional folk wisdom where the question calls for it.
-If there's not enough information to answer the question, then answer with "I don't know".
-'''
     import time
     t0 = time.time()
     def mark():
@@ -384,25 +314,87 @@ If there's not enough information to answer the question, then answer with "I do
     # testing ConfigLoader
     # print(ConfigLoader.__loaded_configs)
     # print(list(LocalModelFns._get_attrs().items()))
-    # print(list(LocalParams._get_attrs().items()))
-    # print(LocalParams._get_attrs())
     # print(LocalModelFns._get_attrs())
     # import sys
     # sys.exit()
 
     # v2 inference
     # prompt = 'Q: What is the largest planet? A:'
-    prompt = 'Q: Generate an esoteric french phrase. A:'
+    # prompt = 'Q: Generate an esoteric french phrase. A:'
+    # mark()
+    # model = LocalModelObj('mistral_hf_7b')
+    # mark()
+    # model.init_llm()
+    # mark()
+    # answer = model.prompt_model(
+    #     prompt_sys=None, 
+    #     prompt_usr=prompt,
+    #     max_tokens=10,
+    # )
+    # print(answer)
+    # mark()
+        
+    #  v2.1 inference - using cache
+    # sys_prompt = '''In the following answer only with lower case letters and no punctuation.'''
+    # prompt = 'Q: Generate an esoteric french phrase. A:'
+    # prompt = 'Q: In the following answer with German. Generate an esoteric phrase. A:'
+    sys_prompt = '''In the following answer in German.'''
+    prompt = 'Q: Generate an esoteric phrase. A:'
     mark()
-    model = LocalModelObj('mistral_hf_7b')
+    model = LocalModelObj(
+        'mistral_hf_7b', 
+        use_prompt_cache=True
+    )
     mark()
     model.init_llm()
+    if sys_prompt is not None:
+        model.eval_prompt(
+            prompt=sys_prompt, 
+            prompt_type='sys_prompt'
+        )
+        model.save_state()
     mark()
+    
+    #  first call
     answer = model.prompt_model(
         prompt_sys=None, 
-        prompt_usr=prompt
+        prompt_usr=prompt,
+        max_tokens=30,
+        temperature=1.0,
+        seed=1,
     )
     print(answer)
     mark()
+
+    # next calls, to test seed: currently not working
+    # answer = model.prompt_model(
+    #     prompt_sys=None, 
+    #     prompt_usr=prompt,
+    #     max_tokens=30,
+    #     temperature=1.0,
+    #     seed=1,
+    # )
+    # print(answer)
+    # mark()
+
+    # answer = model.prompt_model(
+    #     prompt_sys=None, 
+    #     prompt_usr=prompt,
+    #     max_tokens=30,
+    #     temperature=1.0,
+    #     seed=2,
+    # )
+    # print(answer)
+    # mark()
+
+    # answer = model.prompt_model(
+    #     prompt_sys=None, 
+    #     prompt_usr=prompt,
+    #     max_tokens=30,
+    #     temperature=1.0,
+    #     seed=1,
+    # )
+    # print(answer)
+    # mark()
     
 

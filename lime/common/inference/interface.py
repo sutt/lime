@@ -4,21 +4,12 @@ from .api_openai import (
 )
 from .local_llama_cpp import (
     LocalModelObj,
-    LocalModel,
-    LocalModelCache,
     llama_cpp_loaded,
 )
 from .cpl_client import (
     CPLModelObj,
 )
 
-# this is deprecated
-class ModelCacheFactory:
-    def __init__(self):
-        self.instance = LocalModelCache()
-    def get(self) -> LocalModelCache:
-        return self.instance
-    
 
 def extract_gen_params(meta_data: dict) -> dict:
     params = {
@@ -41,7 +32,7 @@ ModelObjVariant =  Union[
     ]
 
 
-def get_infer_obj(model_name: str) -> ModelObjVariant:
+def get_infer_obj(model_name: str, **kwargs) -> ModelObjVariant:
 
     # TODO - check for model_name in configs, and it's associated type
     if model_name.startswith('gpt'):
@@ -51,7 +42,10 @@ def get_infer_obj(model_name: str) -> ModelObjVariant:
         return CPLModelObj(model_name)
     
     elif llama_cpp_loaded:
-        return LocalModelObj(model_name)
+        return LocalModelObj(
+            model_name,
+            use_prompt_cache = kwargs.get('use_prompt_cache', False)
+        )
     
     else:
         raise ValueError(f'model_name {model_name} not recognized')
