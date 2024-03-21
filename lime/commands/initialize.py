@@ -1,6 +1,6 @@
 import os
 import shutil
-from lime.modules.models.errs import (
+from lime.common.models.errs import (
     BaseQuietError,
 )
 
@@ -44,7 +44,7 @@ def config_init(
     write_fn = os.path.join(write_dir, config_dir, write_fn)
 
     read_fn = 'template.yaml'
-    read_fn = os.path.join(script_dir, 'data', 'config_model', read_fn )
+    read_fn = os.path.join(script_dir, '..' 'data', 'config_model', read_fn )
 
     #  read from template and write to config.yaml
     with open(read_fn, 'r') as f:

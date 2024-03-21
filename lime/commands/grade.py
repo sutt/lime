@@ -2,25 +2,25 @@ import os
 import json
 import argparse
 from typing import Union
-from lime.modules.models.errs import (
+from lime.common.models.errs import (
     QuietError,
     BaseQuietError,
 )
-from lime.modules.models.internal import (
+from lime.common.models.internal import (
     SheetSchema,
     SheetOutputSchema,
 )
-from lime.modules.controllers.parse import (
+from lime.common.controllers.parse import (
     parse_to_obj
 )
-from lime.modules.grading.base import grade_array
+from lime.common.grading.base import grade_array
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 
 def do_grade_sheet(
         output_json_fp: str,
         input_md_fp: Union[None, str] = None,
-        input_schema_fp: str = os.path.join(script_dir, 'data', 'md-schema.yaml'),
+        input_schema_fp: str = os.path.join(script_dir, '..', 'data', 'md-schema.yaml'),
         overwrite: bool = False,
         verbose: bool = False,
         liberal_grading: bool = False,

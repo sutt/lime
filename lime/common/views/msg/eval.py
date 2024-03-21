@@ -1,6 +1,6 @@
 import sys, json
 from typing import Any, List, Union
-from lime.modules.models.internal import (
+from lime.common.models.internal import (
     QuestionSchema,
     SheetSchema,
     QuestionOutput,

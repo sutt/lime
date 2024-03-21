@@ -3,15 +3,15 @@ import sys
 import glob
 import pandas as pd
 from typing import Union
-from lime.modules.models.state import ConfigLoader
-from lime.modules.models.errs import (
+from lime.common.models.state import ConfigLoader
+from lime.common.models.errs import (
     QuietError,
     BaseQuietError,
 )
-from lime.modules.views.agg.collect import (
+from lime.common.views.agg.collect import (
     build_data
 )
-from lime.modules.views.agg.query import (
+from lime.common.views.agg.query import (
     format_multi_index,
     input_by_model,
     all_sheets_all_questions,
@@ -20,7 +20,7 @@ from lime.modules.views.agg.query import (
     grade_discrepancy_by_runid,
     model_input_results,
 )
-from lime.modules.views.agg.utils import (
+from lime.common.views.agg.utils import (
     fmt_text_field,
 )
 

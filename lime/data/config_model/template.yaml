@@ -3,7 +3,7 @@
 
 # Do NOT store secrets in here. 
 # Instead use usr config dir: ~/.lime/secrets.env
-# these will be loaded to modules.models.state.Secrets
+# these will be loaded to common.models.state.Secrets
 
 LocalModels:
   my_llama:

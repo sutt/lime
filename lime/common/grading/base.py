@@ -1,5 +1,5 @@
 from typing import List, Dict, Any
-from lime.modules.models.internal import (
+from lime.common.models.internal import (
     QuestionOutput,
     GradingOutput,
 )

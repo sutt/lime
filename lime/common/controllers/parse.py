@@ -4,7 +4,7 @@ import yaml
 from pydantic import (
     BaseModel
 )
-from lime.modules.models.internal import (
+from lime.common.models.internal import (
     MdSheetSection,
     MdQuestionSection,
     MdDocument,

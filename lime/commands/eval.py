@@ -4,35 +4,35 @@ from typing import (
     Union, 
     Any,
 )
-from lime.modules.controllers.parse import (
+from lime.common.controllers.parse import (
     parse_to_obj
 )
-from lime.modules.models.internal import (
+from lime.common.models.internal import (
     SheetSchema,
     HeaderOutput,
     QuestionOutput,
     SheetOutputSchema,
     NTokens,
 )
-from lime.modules.models.utils import (
+from lime.common.models.utils import (
     get_lime_version,
 )
-from lime.modules.views.msg.eval import (
+from lime.common.views.msg.eval import (
     SheetProgressMsg,
     MainProgressMsg,
 )
-from lime.modules.grading.base import (
+from lime.common.grading.base import (
     grade_answer,
 )
-from lime.modules.inference.interface import (
+from lime.common.inference.interface import (
     extract_gen_params,  # maybe move to parse or utils
     get_infer_obj,
     ModelObjVariant,
 )
-from lime.modules.models.state import (
+from lime.common.models.state import (
     ConfigLoader
 )
-from lime.modules.models.errs import (
+from lime.common.models.errs import (
     QuietError,
     BaseQuietError,
 )
@@ -235,7 +235,7 @@ def main(args):
     else: 
         output_dir = input_dir
 
-    input_schema_fn = os.path.join(script_dir, 'data', 'md-schema.yaml')
+    input_schema_fn = os.path.join(script_dir, '..', 'data', 'md-schema.yaml')
 
     model_name      = get_setting(args, 'model_name', )
     dry_run         = get_setting(args, 'dry_run', default=False)

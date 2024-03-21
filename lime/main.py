@@ -1,9 +1,24 @@
 import argparse
-import lime.eval as eval
-import lime.grade as grade
-import lime.agg as agg
-import lime.init as init
-import lime.check as check
+from lime.commands.eval import (
+    setup_parser as eval_setup_parser,
+    main as eval_main,
+)
+from lime.commands.grade  import (
+    setup_parser as grade_setup_parser,
+    main as grade_main,
+)
+from lime.commands.agg  import (
+    setup_parser as agg_setup_parser,
+    main as agg_main,
+)
+from lime.commands.initialize  import (
+    setup_parser as init_setup_parser,
+    main as init_main,
+)
+from lime.commands.check  import (
+    setup_parser as check_setup_parser,
+    main as check_main,
+)
 
 def main():
     '''
@@ -15,28 +30,28 @@ def main():
 
     # Subcommand: eval
     eval_parser = subparsers.add_parser('eval')
-    eval.setup_parser(eval_parser)
-    eval_parser.set_defaults(func=eval.main)
+    eval_setup_parser(eval_parser)
+    eval_parser.set_defaults(func=eval_main)
 
     # Subcommand: agg
     agg_parser = subparsers.add_parser('agg')
-    agg.setup_parser(agg_parser)
-    agg_parser.set_defaults(func=agg.main)
+    agg_setup_parser(agg_parser)
+    agg_parser.set_defaults(func=agg_main)
 
     # Subcommand: grade
     grade_parser = subparsers.add_parser('grade')
-    grade.setup_parser(grade_parser)
-    grade_parser.set_defaults(func=grade.main)
+    grade_setup_parser(grade_parser)
+    grade_parser.set_defaults(func=grade_main)
 
     # Subcommand: init
     init_parser = subparsers.add_parser('init')
-    init.setup_parser(init_parser)
-    init_parser.set_defaults(func=init.main)
+    init_setup_parser(init_parser)
+    init_parser.set_defaults(func=init_main)
 
     # Subcommand: check
     check_parser = subparsers.add_parser('check')
-    check.setup_parser(check_parser)
-    check_parser.set_defaults(func=check.main)
+    check_setup_parser(check_parser)
+    check_parser.set_defaults(func=check_main)
 
     # Invoke subcommand
     args = parser.parse_args()

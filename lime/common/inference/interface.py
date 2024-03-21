@@ -1,8 +1,8 @@
 from typing import Union, Any, Dict, List
-from .oai_api import (
+from .api_openai import (
     OpenAIModelObj,
 )
-from .local_cpp import (
+from .local_llama_cpp import (
     LocalModelObj,
     LocalModel,
     LocalModelCache,

@@ -6,25 +6,24 @@ from typing import (
     Dict,
     Any,
 )
-from lime.modules.models.state import (
+from lime.common.models.state import (
     Secrets,
 )
-from lime.modules.models.errs import (
+from lime.common.models.errs import (
     QuietError,
     BaseQuietError,
 )
-from lime.modules.models.utils import (
+from lime.common.models.utils import (
     get_usr_config_dir,
     get_workspace_config_dir,
 )
-from lime.modules.inference.oai_api import (
+from lime.common.inference.api_openai import (
     OpenAIModelObj,
 )
-from lime.modules.inference.local_cpp import (
+from lime.common.inference.local_llama_cpp import (
     LocalParams,
     LocalModelFns,
     CppInference,
-    get_model_fn,
 )
 
 def get_settings(obj) -> Dict:
@@ -55,6 +54,7 @@ def get_lime_version() -> str:
 
 def setup_parser(argparser):
 
+    # NotImplemented
     argparser.add_argument('--full',        action='store_true')
     argparser.add_argument('--dataset',     action='store_true')
     argparser.add_argument('-b', '--debug', action='store_true')
