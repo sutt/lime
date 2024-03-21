@@ -2,12 +2,12 @@ import pytest
 from unittest import mock
 import os, sys, json, time
 
-from lime.modules.inference.local_cpp import (
-    LocalModel, 
+from lime.common.inference.local_llama_cpp import (
+    LocalModelObj, 
     LocalModelCache,
 )
-from lime.modules.models.utils import get_usr_config_dir
-from lime.modules.models.state import ConfigLoader
+from lime.common.models.utils import get_usr_config_dir
+from lime.common.models.state import ConfigLoader
 
 '''
     These tests call an LLM which takes ~1 minute per test to run.
@@ -41,7 +41,7 @@ else:
         b_skip = True
         SKIP_MSG = 'no mistral_hf_7b model found; skipping tests that need an LLM to load'
     else:
-        VALID_MODEL_PATH = LocalModelFns.mistral_hf_7b
+        VALID_MODEL_NAME = 'mistral_hf_7b'
 
 @pytest.mark.slow
 def test_local_model_seed():
@@ -51,22 +51,20 @@ def test_local_model_seed():
     if b_skip:
         pytest.skip(SKIP_MSG)
     # first - test that with correct seed (8) this answer is reproduced
-    model = LocalModel(VALID_MODEL_PATH)
+    model = LocalModelObj(VALID_MODEL_NAME)
     prompt = 'Q: Name a very exciting place to travel in 2020. Just say the location name, include no other text. A: '
-    answer = " Patagonia, Argentina/Chile."
-    gen_params = {'max_tokens':30, 'temperature':1.0, 'seed':8}
-    model.set_gen_params(gen_params)
-    output = model(prompt)
-    text = model.get_completion(output)
+    answer = ' The Galapagos Islands.'
+    gen_params = {'max_tokens':30, 'temperature':1.0, 'seed':1}
+    model.update_gen_params(gen_params)
+    text, _ = model.prompt_model(prompt_usr=prompt)
     assert text == answer
     # second - test that diff seed (3) produces different answer
-    model = LocalModel(VALID_MODEL_PATH)
+    model = LocalModelObj(VALID_MODEL_NAME)
     prompt = 'Q: Name a very exciting place to travel in 2020. Just say the location name, include no other text. A: '
     answer = " Patagonia, Argentina/Chile." # when seed=8 and model=mistral
-    gen_params = {'max_tokens':30, 'temperature':1.0, 'seed':3}
-    model.set_gen_params(gen_params)
-    output = model(prompt)
-    text = model.get_completion(output)
+    gen_params = {'max_tokens':30, 'temperature':1.0, 'seed':2}
+    model.update_gen_params(gen_params)
+    text, _ = model.prompt_model(prompt_usr=prompt)
     assert text != answer
 
 @pytest.mark.slow
@@ -76,10 +74,9 @@ def test_local_model_max_tokens():
     # test max_tokens gets applied
     my_max_tokens = 5
     prompt = 'Explain and elaborate on aliens could exist under the ocean. A: '
-    model = LocalModel(VALID_MODEL_PATH)
-    model.set_gen_params({'max_tokens':my_max_tokens})
-    output = model(prompt)
-    text = model.get_completion(output)
+    model = LocalModelObj(VALID_MODEL_NAME)
+    model.update_gen_params({'max_tokens':my_max_tokens})
+    text, _ = model.prompt_model(prompt_usr=prompt)
     text_tokens = model.llm.tokenize(text.encode())
     print(text_tokens)
     assert len(text_tokens) == my_max_tokens + 2
@@ -109,7 +106,7 @@ def test_cache_reproduces_seed_1():
     cache = LocalModelCache()
     
     # first try with seed=8
-    model = cache.get(VALID_MODEL_PATH,sys_prompt)
+    model = cache.get(VALID_MODEL_NAME,sys_prompt)
     model.set_gen_params(params)
     output1 = model.eval_question(usr_prompt)
 

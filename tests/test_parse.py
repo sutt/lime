@@ -1,13 +1,13 @@
 import os, sys
 import pytest
-from lime.modules.models.internal import (
+from lime.common.models.internal import (
     SheetSchema,
     QuestionSchema,
 )
-from lime.modules.controllers.parse import (
+from lime.common.controllers.parse import (
     parse_to_obj,
 )
-from lime.eval import (
+from lime.commands.eval import (
     collect_input_sheets
 )
 

@@ -3,9 +3,9 @@ from unittest import mock
 sys.path.append('../')
 
 from lime.eval import eval_sheet, grade_sheet
-from lime.modules.controllers.parse import parse_wrapper
-from lime.modules.inference.oai_api import get_completion
-from lime.modules.inference.local_cpp import get_model_fn
+from lime.common.controllers.parse import parse_wrapper
+from lime.common.inference.oai_api import get_completion
+from lime.common.inference.local_cpp import get_model_fn
 from openai.types.chat import ChatCompletion
 
 def load_chat_completion(fn: str) -> ChatCompletion:
@@ -60,8 +60,8 @@ def test_eval_basic_1():
          - submit_prompt
     '''
     
-    with mock.patch('lime.modules.views.output.open',  mock.mock_open()) as mock_output_file:
-        with mock.patch('lime.modules.inference.interface.submit_prompt') as mock_submit_prompt:
+    with mock.patch('lime.common.views.output.open',  mock.mock_open()) as mock_output_file:
+        with mock.patch('lime.common.inference.interface.submit_prompt') as mock_submit_prompt:
             
             mock_submit_prompt.return_value = MODEL_RESPONSE_STUB
             
@@ -88,7 +88,7 @@ def test_eval_basic_2():
         test with local model: llama_7b
     '''
     
-    with mock.patch('lime.modules.views.output.open',  mock.mock_open()) as mock_output_file:
+    with mock.patch('lime.common.views.output.open',  mock.mock_open()) as mock_output_file:
         with mock.patch('lime.eval.prompt_model') as mock_prompt_model:
             
             mock_prompt_model.return_value = ("stubbed answer", None)
@@ -125,7 +125,7 @@ def test_eval_grading():
     # A) capture the output_obj of a run
     # setting grading output to None to prevent output_obj from containing 
     # a graded section
-    with mock.patch('lime.modules.views.output.open',  mock.mock_open()) as mock_output_file:
+    with mock.patch('lime.common.views.output.open',  mock.mock_open()) as mock_output_file:
         with mock.patch('lime.eval.prompt_model') as mock_prompt_model:
             
             mock_prompt_model.return_value = ('C) The worm', None)        

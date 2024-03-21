@@ -1,7 +1,7 @@
 import os, sys, json, time
 from unittest import mock
 
-from lime.modules.grading.fuzzy import fuzzier_match
+from lime.common.grading.fuzzy import fuzzier_match
 
 def test_fuzzier_match_1():
     '''

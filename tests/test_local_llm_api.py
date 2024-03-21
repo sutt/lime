@@ -1,15 +1,15 @@
 import os, sys, json, time
 from unittest import mock
 
-from lime.modules.inference.local_cpp import LocalModel
+from lime.common.inference.local_llama_cpp import (
+    LocalModelObj,
+    wrap_prompt,
+)
 
 def test_wrap_prompt():
     
     prompt = 'What is the largest planet?'
-    preamble = '''In the following, answer the multiple choice question. Say nothing other than the answer. Only use the possible answers given, e.g. if the only answers are "A) True B) False", then only say either "A) True" or "B) False". Or, e.g. if the choices are A-D then only say e.g. "C) Napolean Bonaparte". Don't add any text to the beginning or end of the answer.'''
-    wrapped_prompt = f'''[INST] <<SYS>>\n{preamble}\n<</SYS>>\n{prompt}\nA:[/INST]'''        
+    preamble = '''In the following, answer the multiple choice question.'''
+    WRAPPED_PROMPT = f'''<s>[INST]{preamble} {prompt} [/INST]'''        
 
-    with mock.patch.object(LocalModel, '__init__', return_value=None):
-        local_model = LocalModel('llama_7b')
-        local_model._wrap_prompt = mock.Mock(return_value=wrapped_prompt)
-        assert local_model._wrap_prompt(prompt) == wrapped_prompt
+    assert wrap_prompt(sys_prompt=preamble, usr_prompt=prompt) == WRAPPED_PROMPT

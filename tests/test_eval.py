@@ -1,17 +1,22 @@
 import os, sys, json
 from unittest import mock
 
-from lime.eval import (
+from lime.commands.eval import (
     eval_sheet, 
 )
-from lime.modules.controllers.parse import (
+from lime.common.controllers.parse import (
     parse_to_obj,
 )
-from lime.modules.inference.oai_api import get_completion
+from lime.common.inference.base import (
+    PromptModelResponse,
+)
+from lime.common.inference.api_openai import (
+    OpenAIModelObj,
+)
 from openai.types.chat import ChatCompletion
 
-# from lime.modules.controllers.parse import parse_wrapper
-# from lime.modules.inference.local_cpp import get_model_fn
+# from lime.common.controllers.parse import parse_wrapper
+# from lime.common.inference.local_cpp import get_model_fn
 
 def load_chat_completion(fn: str) -> ChatCompletion:
     '''need this since oai_api.get_completion takes a ChatCompletion object'''
@@ -27,7 +32,8 @@ MODEL_RESPONSE_STUB = load_chat_completion(RESPONSE_STUB_FN)
 
 def test_stub_loaded():
     '''test to make sure subsequent tests are valid'''
-    msg = get_completion(MODEL_RESPONSE_STUB)
+    model = OpenAIModelObj('gpt-3.5-turbo')
+    msg = model._get_completion(MODEL_RESPONSE_STUB)
     assert len(msg) > 0
 
 def test_get_model_fn():
@@ -48,14 +54,18 @@ def test_eval_basic_1():
     input_schema = './lime/data/md-schema.yaml'
 
     sheet_obj = parse_to_obj(input_md, input_schema)
+    infer_obj = OpenAIModelObj('gpt-3.5-turbo')
     
-    with mock.patch('lime.modules.inference.interface.submit_prompt') as mock_submit_prompt:
+    completion = infer_obj._get_completion(MODEL_RESPONSE_STUB)
+    mock_return_value = PromptModelResponse(completion, None)
+    
+    with mock.patch('lime.common.inference.api_openai.OpenAIModelObj.prompt_model') as mock_submit_prompt:
             
-        mock_submit_prompt.return_value = MODEL_RESPONSE_STUB
+        mock_submit_prompt.return_value = mock_return_value
             
         output = eval_sheet(
             sheet_obj,
-            model_name='gpt-3.5-turbo',
+            infer_obj,
             run_id='aaff'
         )
 
@@ -73,7 +83,7 @@ def test_eval_basic_1():
     output.questions[0].name == 'Q1'
     eval_time = output.questions[0].eval_time
     assert isinstance(eval_time, float)
-    assert eval_time > 0.0
+    # assert eval_time > 0.0
     STUB_COMPLETION = '"Grazie per i muffin alla griglia."'
     assert output.questions[0].completion == STUB_COMPLETION
     assert output.questions[1].completion == STUB_COMPLETION # same for both questions

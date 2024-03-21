@@ -3,9 +3,9 @@ import os, sys, json, time
 from unittest import mock
 sys.path.append('../')
 
-from lime.modules.inference.local_cpp import LocalModel, LocalModelCache
-from lime.modules.models.utils import get_usr_config_dir
-from lime.modules.models.state import ConfigLoader
+from lime.common.inference.local_cpp import LocalModel, LocalModelCache
+from lime.common.models.utils import get_usr_config_dir
+from lime.common.models.state import ConfigLoader
 
 SKIP_MSG = 'no usr config dir found; skipping tests that need an LLM to load'
 

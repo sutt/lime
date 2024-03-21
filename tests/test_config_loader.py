@@ -2,7 +2,7 @@ import os, sys, json, time
 from unittest import mock
 import pytest
 
-from lime.modules.models.config import ConfigLoader
+from lime.common.models.config import ConfigLoader
 
 config_usr_fn = './tests/data/stubs/config-toy-1.yaml'
 config_workspace_fn = './tests/data/stubs/config-toy-2.yaml'

@@ -1,6 +1,6 @@
 import os, json, time, sys
 sys.path.append('../')
-from lime.modules.controllers.parse import parse_wrapper
+from lime.common.controllers.parse import parse_wrapper
 from lime.eval import collect_input_sheets
 
 
