@@ -6,6 +6,7 @@ from typing import (
 import requests
 import tiktoken
 from .base import (
+    PromptModelResponse,
     ModelObj,
 )
 from ..models.state import (
@@ -64,7 +65,7 @@ class CPLModelObj(ModelObj):
                      prompt_usr: str = None, 
                      progress_cb: callable = None,
                      **kwargs
-                     ) -> Tuple[Union[str, None], Union[Exception, None]]:
+                     ) -> PromptModelResponse:
         
         try:
             
@@ -96,10 +97,10 @@ class CPLModelObj(ModelObj):
                 except: server_err_text = 'could not parse server error message'
                 raise ValueError(f'Error: {response.status_code} - {server_err_text}')
             
-            return (completion, None)
+            return PromptModelResponse(completion, None)
         
         except Exception as e:
-            return (None, e)
+            return PromptModelResponse(None, e)
 
     def parse_completion_obj(self, completion: Any) -> Any:
         return completion

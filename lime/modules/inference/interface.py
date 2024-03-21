@@ -12,7 +12,7 @@ from .cpl_client import (
     CPLModelObj,
 )
 
-
+# this is deprecated
 class ModelCacheFactory:
     def __init__(self):
         self.instance = LocalModelCache()

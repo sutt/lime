@@ -10,6 +10,7 @@ from openai import (
     ChatCompletion,
 )
 from .base import (
+    PromptModelResponse,
     ModelObj,
 )
 from ..models.state import (
@@ -34,6 +35,7 @@ class OpenAIModelObj(ModelObj):
         self.prompt_model_params = [
             'temperature',
             'max_tokens',
+            'seed',
         ]
 
     def check_valid(self, **kwargs) -> bool:
@@ -60,7 +62,7 @@ class OpenAIModelObj(ModelObj):
                      prompt_usr: str, 
                      progress_cb: callable = None,
                      **kwargs
-                    ) -> Tuple[Union[str, None], Union[Exception, None]]:
+                    ) -> PromptModelResponse:
         try:
 
             client = OpenAI(
@@ -93,14 +95,37 @@ class OpenAIModelObj(ModelObj):
 
             s_completion = self._get_completion(chat_completion)
             
-            return s_completion, None
+            return PromptModelResponse(s_completion, None)
         
         except Exception as e:
             
-            return None, e
+            return PromptModelResponse(None, e)
     
     @staticmethod
     def _get_completion(chat_completion: ChatCompletion) -> str:
         return chat_completion.choices[0].message.content
         
 
+if __name__ == '__main__':
+
+    import time
+    t0 = time.time()
+    def mark():
+        global t0
+        print(f'{time.time()-t0:.2f}')
+        t0 = time.time()
+
+    # prompt = 'Q: What is the largest planet? A:'
+    # prompt = 'Q: Generate an esoteric french phrase. A:'
+    prompt = 'Q: Generate an esoteric french phrase. (Then explain why it would be considered esoteric) A:'
+    mark()
+    model = OpenAIModelObj('gpt-3.5-turbo')
+    mark()
+    answer = model.prompt_model(
+        prompt_sys=None, 
+        prompt_usr=prompt
+    )
+    print(answer)
+    mark()
+
+    

@@ -3,12 +3,13 @@ import io
 import ctypes
 from contextlib import redirect_stderr
 from typing import (
-    Dict,
     Any,
-    Tuple,
+    Dict,
+    List,
     Union,
 )
 from .base import (
+    PromptModelResponse,
     ModelObj,
 )
 from ..models.state import (
@@ -25,7 +26,7 @@ except ImportError:
     llama_cpp_loaded = False
 except Exception as e:
     llama_cpp_loaded = False
-    raise ValueError(f'exception in importing llama_cpp: {e}')
+    raise ValueError(f'exception in importing llama_cpp: {str(e)}')
 
 llama_log_obj = []
 
@@ -88,11 +89,11 @@ def get_model_fn(model_name: str) -> str:
     except Exception as e:
         raise ValueError(f'exception in get_model_fn: {e}')
         
-# TODO - Why is linter saying lower conditions not reachable?
+
 def wrap_prompt(
-        prompt: str = None,
-        sys_prompt: str = None,
-        usr_prompt: str = None,
+        prompt:     Union[str, None] = None,
+        sys_prompt: Union[str, None] = None,
+        usr_prompt: Union[str, None] = None,
     ) -> str:
     if prompt is not None:
         return f'''<s>[INST]{prompt} [/INST]'''
@@ -269,9 +270,9 @@ class LocalModelObj(ModelObj):
     
     def __init__(self, model_name: str) -> None:
         super().__init__(model_name)
-        self.model_fn = None
-        self.llm = None
-        self.prompt_model_params = [
+        self.model_fn : Union[str, None] = None
+        self.llm : Union[Llama, None] = None
+        self.prompt_model_params :List[str] = [
             'temperature',
             'max_tokens',
             'seed',
@@ -309,7 +310,7 @@ class LocalModelObj(ModelObj):
                     prompt_usr: str = None,
                     progress_cb: callable = None,
                     **kwargs
-                    ) -> Tuple[Union[str, None], Union[Exception, None]]:
+                    ) -> PromptModelResponse:
         try:
             
             if self.llm is None:
@@ -335,10 +336,12 @@ class LocalModelObj(ModelObj):
                 **self.gen_params,
             )
 
-            return self._get_completion(output), None
+            completion = self._get_completion(output)
+            
+            return PromptModelResponse(completion, None)
         
         except Exception as e:
-            return None, e
+            return PromptModelResponse(None, e)
     
     @staticmethod
     def _get_completion(output):
@@ -378,35 +381,28 @@ If there's not enough information to answer the question, then answer with "I do
         print(f'{time.time()-t0:.2f}')
         t0 = time.time()
 
+    # testing ConfigLoader
     # print(ConfigLoader.__loaded_configs)
     # print(list(LocalModelFns._get_attrs().items()))
     # print(list(LocalParams._get_attrs().items()))
-    print(LocalParams._get_attrs())
-    print(LocalModelFns._get_attrs())
-    
-    import sys
-    sys.exit()
+    # print(LocalParams._get_attrs())
+    # print(LocalModelFns._get_attrs())
+    # import sys
+    # sys.exit()
 
-    cache = LocalModelCache()
-    cache.get('mistral_hf_7b', sys_prompt)
+    # v2 inference
+    # prompt = 'Q: What is the largest planet? A:'
+    prompt = 'Q: Generate an esoteric french phrase. A:'
     mark()
-    
-    usr_prompt = 'Q: What is the largest planet? A:'
-    cache.get('mistral_hf_7b', sys_prompt)
-    d = cache.eval_question(usr_prompt, seed=1)
-    print(d.get('text'))
+    model = LocalModelObj('mistral_hf_7b')
     mark()
-    
-    usr_prompt = 'Q: What is the smallest planet? A:'
-    cache.get('mistral_hf_7b', sys_prompt)
-    d = cache.eval_question(usr_prompt, seed=3)
-    print(d.get('text'))
+    model.init_llm()
     mark()
-
-    usr_prompt = 'Q: What is the mouse\'s name? A:'
-    cache.get('mistral_hf_7b', sys_prompt)
-    d = cache.eval_question(usr_prompt)
-    print(d.get('text'))
+    answer = model.prompt_model(
+        prompt_sys=None, 
+        prompt_usr=prompt
+    )
+    print(answer)
     mark()
     
 

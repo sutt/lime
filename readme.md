@@ -1,18 +1,26 @@
 # LIME - Micro-framework for Evals
 
 A homebrewed Language Model Eval tool.  Specifically a cli pipeline to:
- - Parse question/answer datasets in markdown format:
- - Evaluate the language models on these datasets:
-    - process these datasets into openai api and locally deployed llamas models
-    - automatically grade the results
- - Aggregate / summarize / compare the results.
- - Run the eval against Custom PipeLine (`cpl-`) apps.
+1. Parse question/answer datasets in markdown format:
+1. Evaluate the language models on these datasets:
+    - Inference Services:
+      - OpenAI API 
+      - Locally running LlamaCpp models
+      - Custom PipeLine (CPL) apps
+    - Grade or re-grade the completions
+1. Aggregate / Summarize / Compare the results.
+ 
 
-This was built on a [Wordle dataset](https://github.com/sutt/wordle-qa-2) which uses different multiple-choice questions about rules/strategy/reasoning for the game (e.g. JSON representation).
+**Gallery of QA Repositories:**
+- [**Hello QA**](https://github.com/sutt/hello-qa) which has different experiments around using lime to demonstrate useful functionality and patterns.
+- [**Wordle dataset**](https://github.com/sutt/wordle-qa-2) which uses different multiple-choice questions about rules/strategy/reasoning for the game.
 
-TODO - link to hello-qa dataset
 
 TODO - insert a diagram
+
+### Value Proposition
+
+TODO - insert the value prop around the complexity-spectrum of how evals are performed.
 
 ### Invoking Sub Commands
 
@@ -142,6 +150,11 @@ lime init config --workspace
 # edit the .lime/config.yaml file
 
 ```
+
+Obviously, with the long constructed filename, tab completion in the terminal is vital to usability. To avoid low number of completions several best practices are used:
+- Keep the number of input files in the directory low.
+- Periodically move output files into a cetralized repo, e.g. an `./aggfiles/` directory. This allows you to run `agg` commands on all the most recent test runs, but not pollute your experiments reporting with older irrelevant data.
+  - To build queries out of the `aggfiles` directory, use the globs, e.g. `lime agg ./aggfiles/*gpt-3.5*` to aggregate all output files that inclue this string in the word.
 
 ### Running Tests
 
