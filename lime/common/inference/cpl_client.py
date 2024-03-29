@@ -1,6 +1,7 @@
 from typing import (
     Any,
-    Tuple,
+    List,
+    Dict,
     Union,
 )
 import requests
@@ -18,47 +19,37 @@ class CplServer(ConfigLoader):
     domain = 'localhost'
     port = 5000
     debug = True
-
 CplServer._initialize()
 
-configs = {
-    # is api key needed by the client? ideally not just to reduce 
-    # the surface area of exposing secrets
-    'secrets': {
-        'openai_api_key': Secrets.get('OPENAI_API_KEY'),
-    },
-    'settings': {
-        'host': CplServer.domain,
-        'port': CplServer.port,
-        'debug': CplServer.debug,
-        # TODO - add timeout
-    }
-}
-
-def check_cpl(
-        **kwargs
-    ) -> bool:
-    base_url = 'http://' + CplServer.domain + ':' + str(CplServer.port) + '/' 
-    endpoint = 'check'
-    try:
-        response = requests.get(base_url + endpoint, timeout=5)
-        data = response.json() 
-        if data.get('status') != 'ok':
-            raise ValueError(f'Error in cpl server check with status: {data}')
-        return True
-    except requests.exceptions.RequestException as e:
-        raise ValueError(f'Error in cpl server check: {str(e)}')
-    except Exception as e:
-        raise ValueError(f'Error in cpl server check: {str(e)}')
-    
+class CplClientParams(ConfigLoader):
+    valid_request_args = None  
+CplClientParams._initialize()
 
 class CPLModelObj(ModelObj):
     
     def __init__(self, model_name: str) -> None:
         super().__init__(model_name)
+        self.profile_params : Dict[str, Any] = {
+            **CplClientParams._get_attrs().copy(), 
+            **self.profile_params,  # base client params overidden by model specific profile vars
+        }
+        self.valid_request_args : Union[List[str], None] = CplClientParams.valid_request_args
+        self.base_url : str = f'http://{CplServer.domain}:{CplServer.port}'
+        self.endpoint_check : str = '/check'
+        self.endpoint_infer : str = '/infer'
 
     def check_valid(self, **kwargs) -> bool:
-        return check_cpl()
+        try:
+            response = requests.get(
+                self.base_url + self.endpoint_check,
+                timeout=5
+            )
+            data = response.json() 
+            if data.get('status') != 'ok':
+                raise ValueError(f'Status not ok (cpl). Status: {data}')
+            return True
+        except Exception as e:
+            raise ValueError(f'Exception in check_valid (cpl). Message: {str(e)}')
 
     def prompt_model(self, 
                      prompt_sys: str = None, 
@@ -69,35 +60,45 @@ class CPLModelObj(ModelObj):
         
         try:
             
-            base_url = 'http://' + CplServer.domain + ':' + str(CplServer.port) + '/'
-            end_point = 'infer'
-            
-            req_params = {}
+            req_params = {**self.profile_params.copy(), **kwargs}
+
+            if self.valid_request_args:
+                req_params = {
+                    k:v for k,v in req_params.items() 
+                    if k in self.valid_request_args
+                }
 
             prompt = (
                 (prompt_sys if prompt_sys else '') +
                 (prompt_usr if prompt_usr else '')
             )
             
-            data = {
+            payload = {
                 'question': prompt,
                 **req_params,
             }
             
-            response = requests.post(base_url + end_point, json=data)
+            response = requests.post(
+                self.base_url + self.endpoint_infer,
+                json=payload
+            )
             
-            if response.status_code == 200:
+            completion, error = None, None
+            
+            if response.status_code < 400:
                 try:
                     result = response.json()
-                    completion = result.get('answer')
+                    completion = result['answer']
                 except Exception as e:
-                    raise ValueError(f'Error parsing infer_cpl response: {e}')
+                    error = ValueError(f'Error parsing infer_cpl response: {e}')
             else:
-                try: server_err_text = response.json().get('error')
-                except: server_err_text = 'could not parse server error message'
-                raise ValueError(f'Error: {response.status_code} - {server_err_text}')
+                try: 
+                    server_err_text = response.json().get('error')
+                except: 
+                    server_err_text = 'could not parse server error message'
+                error = ValueError(f'Error: {response.status_code} - {server_err_text}')
             
-            return PromptModelResponse(completion, None)
+            return PromptModelResponse(completion, error)
         
         except Exception as e:
             return PromptModelResponse(None, e)

@@ -8,10 +8,19 @@
 LocalModels:
   my_llama:
     fn: 'path/to/weights'
-  
+  my_cpl_basic:
+    type: cpl
+    profile:
+      style: basic
+  gpt_3:
+    type: openai
+    name: 'gpt-3.5-turbo'
+    profile:
+      top_k: 10
+
 LocalParams:
   temperature: 0.0
-  max_tokens: 200
+  max_tokens: 100
   seed: null
 
 LocalModelInitParams:
@@ -19,15 +28,22 @@ LocalModelInitParams:
   n_threads: 4
 
 ExecSettings:
-  verbose: 1                      # different than configless default which is 0
+  verbose: 0
   uuid_digits: 4
   input_sheet_prefix: 'input'
   output_sheet_prefix: 'output'
-  # model_name: 'gpt-3.5-turbo'   # set to replace -m flag in eval, default is already set in script
-  use_prompt_cache: True
-  save_tmp_file: True
+  model_name: 'gpt-3.5-turbo'
+  use_prompt_cache: False    # Maybe move to init params?
+  save_tmp_file: False
 
 CplServer:
   domain: localhost
   port: 5000
   debug: True
+
+CplClientParams:
+  valid_request_args: null
+
+CplServerParams:
+  k_retrieved: 3
+

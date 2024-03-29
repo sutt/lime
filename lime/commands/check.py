@@ -17,14 +17,17 @@ from lime.common.models.utils import (
     get_usr_config_dir,
     get_workspace_config_dir,
 )
+from lime.common.inference.base import (
+    LocalParams,
+)
 from lime.common.inference.api_openai import (
     OpenAIModelObj,
 )
 from lime.common.inference.local_llama_cpp import (
-    LocalParams,
     LocalModelFns,
     CppInference,
 )
+# TODO - add LocalParams and print out
 
 def get_settings(obj) -> Dict:
     try:
@@ -36,7 +39,7 @@ def get_settings(obj) -> Dict:
 def fmt_grid(d: Dict, n_chars: int = 20) -> str:
     s = ''
     for k,v in d.items():
-        if not isinstance(v, str): continue
+        # if not isinstance(v, str): continue
         row =  '{:<{n_chars}}'.format(k, n_chars=n_chars)
         row += ': '
         v = 'null' if v is None else v
@@ -117,6 +120,7 @@ def main(args):
     print(fmt_grid(get_settings(CppInference)))
 
     #### ModelFns
+    # TODO - only print if model_type is 'local'
     d_modelfns = get_settings(LocalModelFns)
     print('')
     print(fmt_grid(d_modelfns))

@@ -18,12 +18,6 @@ from ..models.state import (
     Secrets,
 )
 
-class LocalParams(ConfigLoader):
-    max_tokens = 50
-    temperature = 0.0
-
-LocalParams._initialize()
-
 
 module_api_key = Secrets.get('OPENAI_API_KEY')
 
@@ -37,10 +31,14 @@ class OpenAIModelObj(ModelObj):
             'max_tokens',
             'seed',
         ]
+        self.base_model_name = 'gpt-3.5-turbo' # TODO - add this from kwargs
 
     def check_valid(self, **kwargs) -> bool:
-        client = OpenAI(api_key=module_api_key)
-        try: client.models.list()
+        try: 
+            client = OpenAI(api_key=module_api_key)
+            models_list = client.models.list()
+            if self.base_model_name not in models_list:
+                raise ValueError(f'model {self.base_model_name} not found in models list')
         except AuthenticationError:
             raise AuthenticationError('OpenAI API key not valid')
         except Exception as e:

@@ -30,21 +30,11 @@ except Exception as e:
 
 llama_log_obj = []
 
-class LocalParams(ConfigLoader):
-    max_tokens = 50
-    temperature = 0.0
-    seed = None
-
-LocalParams._initialize()
-
-
 class LocalModelFns(ConfigLoader):
     _urn = {
         'data': lambda config: config.get('LocalModels'),
         'value': lambda data, key: data.get(key, {}).get('fn'),
     }
-    llama_7b = None
-    mistral_hf_7b = None
 
 LocalModelFns._initialize()
 
@@ -178,8 +168,8 @@ class LocalModelCache:
                 if progress_cb is not None:
                     progress_cb(s_token)
 
-                if ((counter >= self.gen_params.get('max_tokens')) or
-                    (counter >= self.init_params.get('n_ctx'))
+                if ((counter >= self.gen_params.get('max_tokens')) or  
+                    (counter >= self.init_params.get('n_ctx'))      # TODO - split this off
                     ):
                     break
                 else:
@@ -191,7 +181,7 @@ class LocalModelCache:
             return PromptModelResponse(completion, None)
         
         except Exception as e:
-            return PromptModelResponse(None, e)
+            return PromptModelResponse(None, e)     #TODO - add completion to response
     
 
 
@@ -200,9 +190,9 @@ class LocalModelObj(ModelObj, LocalModelCache):
     def __init__(self, model_name: str, **kwargs) -> None:
         ModelObj.__init__(self, model_name, **kwargs)
         LocalModelCache.__init__(self)
-        self.model_fn : Union[str, None] = None
+        self.model_fn : str = get_model_fn(self.model_name)
         self.llm : Union[Llama, None] = None
-        self.prompt_model_params :List[str] = [
+        self.prompt_model_params : List[str] = [
             'temperature',
             'max_tokens',
             'seed',
@@ -220,7 +210,6 @@ class LocalModelObj(ModelObj, LocalModelCache):
     
     @suppress_stderr
     def init_llm(self, **kwargs) -> None:
-        self.model_fn = get_model_fn(self.model_name)
         llama_log_set(log_callback, ctypes.c_void_p())
         self.llm = Llama(
             model_path=get_model_fn(self.model_name), 

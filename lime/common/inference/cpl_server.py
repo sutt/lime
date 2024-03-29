@@ -1,3 +1,8 @@
+from typing import (
+    List,
+    Dict,
+    Any,
+)
 from flask import (
     Flask, 
     Response,
@@ -13,99 +18,96 @@ class CplServer(ConfigLoader):
     domain = 'localhost'
     port = 5000
     debug = False
-
-# Since I'm inheriting the server base class, as opposed to 
-# running a script, will this ever find a workspace config file?
 CplServer._initialize()
 
-CONFIGS = {
-    'secrets': {
-        'openai_api_key': Secrets.get('OPENAI_API_KEY'),
-    },
-    'settings': {
-        'host': CplServer.domain,
-        'port': CplServer.port,
-        'debug': CplServer.debug,
-    }
-}
+class CplServerParams(ConfigLoader):
+    required_infer_keys = None
+CplServerParams._initialize()
 
 class CPLBaseServer:
-    def __init__(self, config:dict = {}) -> None:
-        self.app = Flask(__name__)
-        self.config = {**CONFIGS, **config}
-        self.infer_obj = None
+    '''
+        Import and inherit this class in your own app to create a server
+        that can be used by the CPLModelObj client to make inference requests.
+    '''
+    def __init__(
+            self, 
+            server_config : Dict[str, Any] = {},
+            server_params : Dict[str, Any] = {},
+        ) -> None:
+
+        self.app : Flask = Flask(__name__)
+        self.server_config : Dict[str, Any] = {
+            **CplServer._get_attrs().copy(), 
+            **server_config
+        }
+        self.server_params: Dict[str, Any] = {
+            **CplServerParams._get_attrs().copy(),
+            **server_params
+        }
+        self.secrets : Dict[str, Any] = Secrets.copy()
+        self.required_infer_keys : List[str] = CplServerParams.required_infer_keys or []
 
         self.app.add_url_rule('/check', 'check_status', self.check_status)
-        
         self.app.add_url_rule('/infer', 'infer', self.infer, methods=['POST'])
 
     def check_status(self) -> Response:
-        # TODO - check if infer model is loaded
-        # TODO - add checks for other services, e.g. retrieval connection etc
+        '''
+            Must return a JSON response with a status = 'ok'.
+        '''
         return jsonify({
             'status': 'ok'
         })
 
     def infer(self) -> Response:
-        data = request.get_json()
-        question = data.get('question')
-        # TODO - get extra params to send as args to generate_answer
-        # if specified as a type of something, e.g. sig_type[Optional[str]] these
-        # can be programmatically parsed here, but also referenced in check_status
-        if question is None:
-            return jsonify({'error': 'No question provided in json body'}, 400)
+        '''
+            Shouldnt need to override this method, instead:
+             - override generate_answer()
+             - add required keys to self.required_infer_keys
+        '''
         try:
-            answer = self.generate_answer(question)
+            data = request.get_json()
         except Exception as e:
-            return jsonify({'error': f'Error when calling generate_answer{str(e)}'}, 500)
-        response = {'answer': answer}
-        return jsonify(response)
+            return jsonify({'error': f'could not parse json payload: {str(e)}'}, 400)
+        
+        try:
+            self.check_payload(data)
+        except AssertionError as e:
+            return jsonify({'error': str(e)}, 400)
+        
+        try:
+            answer = self.generate_answer(**data)
+        except Exception as e:
+            return jsonify({'error': f'Error on generate_answer: {str(e)}'}, 500)
+        
+        return jsonify({'answer': answer})
+    
+    def check_payload(self, data: dict, required_keys: list = ['question']) -> None:
+        '''
+            Raise Error if required keys are not found in payload.
+            Inherit this method and modify self.required_infer_keys to add more checks.
+        '''
+        required_keys += self.required_infer_keys
+        for key in required_keys:
+            assert key in data, f'Key {key} not found in payload'
 
     def generate_answer(self, question: str, **kwargs) -> str:
-        # Override this method in the subclass to generate an answer 
-        # using the infer_obj
-        return "CPLBaseServer default answer"
+        '''
+            Override this method in the subclass to allow infer() to call it.
+            Make sure to include kwargs so that client can pass extra args in payload.
+        '''
+        raise NotImplementedError
 
     def run(self, **kwargs):
-        run_params = {
-            'host':     self.config.get('settings').get('host'),
-            'port':     self.config.get('settings').get('port'),
-            'debug':    self.config.get('settings').get('debug'),
+        '''
+            Call this method on your inherited class to start server.
+            This is a blocking call, so save it for the end of your script.
+        '''
+        static_params = {
+            'host':     self.server_config.get('host'),
+            'port':     self.server_config.get('port'),
+            'debug':    self.server_config.get('debug'),
         }
-        params = {**kwargs, **run_params}
-        # TODO - verbose option
-        # TODO try/catch keyboard interrupt
-        self.app.run(**params)
+        run_server_params = {**static_params, **kwargs}
 
+        self.app.run(**run_server_params)
 
-# class InferObj:
-#     def __init__(self, **kwargs):
-#         self.setup_client_objs(**kwargs)
-#     def setup_client_objs(self, **kwargs):
-#         pass
-#         # self.turbo = dspy.OpenAI(
-#         #     model='gpt-3.5-turbo', 
-#         #     api_key=OPENAI_API_KEY,
-#         # )
-#         # self.colbertv2_wiki17_abstracts = dspy.ColBERTv2(
-#         #     url='http://
-
-# class CPLServer(CPLBaseServer):
-#     def __init__(self, InferObj, config: dict = None):
-#         super().__init__(config)
-#         self.api_key = config['api_key']
-#         # Initialize the InferObj using the config variables
-#         self.infer_obj = InferObj(api_key=self.api_key)
-
-#     def process_data(self, data):
-#         # Custom implementation to process the received JSON data
-#         processed_data = self.infer_obj.preprocess_data(data)
-#         return {
-#             'message': 'JSON data processed using InferObj', 
-#             'data': processed_data
-#         }
-
-#     def generate_answer(self, question):
-#         # Custom implementation to generate an answer using the infer_obj
-#         answer = self.infer_obj.generate_answer(question, sig_type='BasicQA')
-#         return answer

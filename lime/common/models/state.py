@@ -31,5 +31,7 @@ if usr_config_fn is not None:
 key_names = [
     'OPENAI_API_KEY',
 ]
+
 for k in key_names:
-    Secrets[k] = os.environ.get(k)
+    if os.environ.get(k) is not None:
+        Secrets[k] = os.environ.get(k)
