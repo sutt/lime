@@ -1,0 +1,23 @@
+# LIME config file, generated with lime init command
+# template lime v0.1 config:
+
+# Do NOT store secrets in here. 
+# Instead use usr config dir: ~/.lime/secrets.env
+# these will be loaded to common.models.state.Secrets
+
+LocalModels:
+  my_cpl_basic:
+    type: cpl
+    profile:
+      style: basic
+  gpt_3:
+    type: openai
+    name: 'gpt-3.5-turbo'
+    profile:
+      max_tokens: 63
+
+LocalParams:
+  temperature: 0.0
+  max_tokens: 44
+  seed: 2
+

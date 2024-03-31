@@ -176,6 +176,30 @@ def test_toy_example_4():
     assert Gamma.gamma == None
 
 
+def test_toy_example_5():
+    '''
+        if class is defined but not in any of the
+        loaded config files, then it should not be 
+        remain only with its defined attributes
+    '''
+
+    # these classes dont exist in the config files
+    # let's make sure we handle that case as well
+    class NewNameOne(ConfigLoader):
+        item_x = 0
+
+    class NewNameTwo(ConfigLoader):
+        pass
+
+    ConfigLoader._load(config_usr_fn)
+    ConfigLoader._load(config_workspace_fn)
+
+    NewNameOne._initialize()
+    NewNameTwo._initialize()
+
+    assert NewNameOne.item_x == 0
+
+    assert NewNameTwo._get_attrs() == {}
     
 
 

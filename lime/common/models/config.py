@@ -4,7 +4,7 @@ import yaml
 class ConfigLoader:
     __loaded_configs = {}
     __urn = {
-        'data': lambda config: config,
+        'data': lambda config: {},
         'keys': lambda data: data.keys(),
         'value': lambda data, key: data.get(key),
     }
