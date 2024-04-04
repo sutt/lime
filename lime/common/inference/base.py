@@ -50,11 +50,11 @@ class ModelObj:
         
         self.model_name : str = model_name
         self.use_prompt_cache : bool = kwargs.get('use_prompt_cache', False)
-        self.gen_params : Dict[str, Any] = LocalParams._get_attrs().copy()
+        self.gen_params : Dict[str, Any] = LocalParams._to_dict()
         self.prompt_model_params : List[str] = []
         
         ModelProfileParams._initialize_for_model(model_name)
-        self.profile_params = ModelProfileParams._get_attrs().copy()
+        self.profile_params = ModelProfileParams._to_dict()
         self.gen_params = {
             k: self.profile_params.get(k) or v
             for k, v in self.gen_params.items()

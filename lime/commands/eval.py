@@ -5,7 +5,8 @@ from typing import (
     Any,
 )
 from lime.common.controllers.parse import (
-    parse_to_obj
+    parse_to_obj,
+    extract_gen_params,
 )
 from lime.common.models.internal import (
     SheetSchema,
@@ -25,7 +26,6 @@ from lime.common.grading.base import (
     grade_answer,
 )
 from lime.common.inference.interface import (
-    extract_gen_params,  # maybe move to parse or utils
     get_infer_obj,
     ModelObjVariant,
 )
@@ -97,7 +97,6 @@ def eval_sheet(
 
         ntokens_usr = infer_obj.count_tokens(question.text_usr)
         
-
         gen_params = extract_gen_params(question.meta)
 
         progress.pre_prompt(question)
@@ -116,7 +115,7 @@ def eval_sheet(
             question_sys    = question.text_sys,
             question_usr    = question.text_usr,
             completion      = completion,
-            error           = str(error) if error is not None else None,
+            error           = str(error) if error else None,
             eval_time       = time.time() - t0,
         )
 

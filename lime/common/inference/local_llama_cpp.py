@@ -74,7 +74,7 @@ def get_model_fn(model_name: str) -> str:
             return model_name
         else:
             msg = f'model_name {model_name} is not a valid file '
-            msg += f'or list of LocalModelFns: {", ".join(list(LocalModelFns._get_attrs().keys()))}'
+            msg += f'or list of LocalModelFns: {", ".join(list(LocalModelFns._to_dict().keys()))}'
             raise ValueError(msg)
     except Exception as e:
         raise ValueError(f'exception in get_model_fn: {e}')

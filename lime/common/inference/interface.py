@@ -13,20 +13,6 @@ from .cpl_client import (
     CPLModelObj,
 )
 
-# TODO - move to parser, but how to pull from LocalParams?
-def extract_gen_params(meta_data: dict) -> dict:
-    params = {
-        'temperature': float,
-        'max_tokens': int,
-        'seed': int,
-    }
-    gen_params = {}
-    for k, f in params.items():
-        if k in meta_data:
-            try: gen_params[k] = f(meta_data[k])
-            except: pass
-    return gen_params
-
 
 class ModelNameTypes(ConfigLoader):
     _urn = {
@@ -46,8 +32,8 @@ ModelObjVariant =  Union[
 def get_infer_obj(model_name: str, **kwargs) -> ModelObjVariant:
 
     model_type = None
-    if model_name in ModelNameTypes._get_attrs().keys():
-        model_type = ModelNameTypes._get_attrs()[model_name]
+    if model_name in ModelNameTypes._to_dict().keys():
+        model_type = ModelNameTypes._to_dict()[model_name]
         if model_type not in ('openai', 'local', 'cpl'):
             raise ValueError(f'model_type {model_type} not recognized')
 

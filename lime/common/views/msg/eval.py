@@ -10,6 +10,17 @@ from lime.common.models.internal import (
 def shorten(s: str, n_chars: int) -> str:
     return s if len(s) <= n_chars else s[:n_chars - 3] + '...'
 
+def grid_fmt(
+        s: str,
+        just_chars: Union[str, None] = None,
+        max_chars: Union[int, None] = None,
+    ) -> str:
+    if just_chars is not None:
+        s = '{:<{n_chars}}'.format(s, n_chars=just_chars)
+    if max_chars is not None:
+        s = s[:max_chars]
+    return s
+
 class SheetProgressMsg:
     def __init__(
             self, 
@@ -18,6 +29,15 @@ class SheetProgressMsg:
         ):
         self.verbose = verbose_level
         self.n_chars = 13
+
+    @staticmethod
+    def _grid_fmt_gen(
+            just_chars: Union[int, None] = None,
+            max_chars:  Union[int, None] = None,
+            ) -> callable:
+        def wrapper(s: str) -> str:
+            return grid_fmt(s, just_chars=just_chars, max_chars=max_chars)
+        return wrapper
 
     def pre_loop(
             self,
@@ -36,57 +56,78 @@ class SheetProgressMsg:
                 e for e in output_obj.questions 
                 if e.error is not None
             ])
-            print(f"Completed all {total_questions} questions")
-            print(f'completion_errors: {num_errors}')
+            s =  f'Completed {total_questions} questions |'
+            s += f' {num_errors} errors | '
+            print(s, end='', flush=True)
     
     def pre_prompt(
             self, 
             question_obj: QuestionSchema
         ) -> None:
+        if self.verbose == 0:
+            return
+        fmt = self._grid_fmt_gen(
+                    just_chars = self.n_chars, 
+                    max_chars =  self.n_chars if self.verbose == 1 else None,
+        )
+        sep = '| '
+        s = ''
         if self.verbose > 0:
-            s = '{:<{n_chars}}'.format(
-                shorten(question_obj.name, self.n_chars), 
-                n_chars=self.n_chars
-            )
-            print(s, end='| ', flush=True)
-        if self.verbose > 1:
-            s = '{:<{n_chars}}'.format(
-                shorten(question_obj.text_usr, self.n_chars), 
-                n_chars=self.n_chars
-            )
-            print(s, end='| ', flush=True)
+            s += fmt(question_obj.name)
+            s += sep
+        if self.verbose > 1 and question_obj.text_usr is not None:
+            s += fmt(question_obj.text_usr)
+            s += sep
+        print(s, end='', flush=True)
 
     def post_prompt(
             self, 
             q_out: QuestionOutput,
         ) -> None:
-        if self.verbose > 0:
-            s = '{:<{n_chars}}'.format(
-                f"grade: {'✅' if q_out.grading.grade_bool else '❌'}", 
-                n_chars=self.n_chars
-            )
-            print(s, end='| ', flush=True)
-            s = '{:<{n_chars}}'.format(
-                f'{q_out.eval_time:.2f} secs', 
-                n_chars=self.n_chars
-            )
-            print(s, end='| ', flush=True)
-            if self.verbose == 1:
-                print('', flush=False)
-        if self.verbose > 1:
-            n_sys = q_out.ntokens.sys or 0
-            n_usr = q_out.ntokens.usr or 0
-            n_cmp = q_out.ntokens.cmp or 0
-            tps = ( n_cmp / q_out.eval_time)
-            tps = f'{tps:.1f}' if tps > 0 else 'n/a'
-            s = '{:<{n_chars}}'.format(
-                 f'{tps} tok/sec', 
-                n_chars=self.n_chars
-            )
-            print(s, end='| ', flush=True)
-            print('', flush=False)
+        
+        if self.verbose == 0:
+            return
+        
+        fmt = self._grid_fmt_gen(
+                    just_chars = self.n_chars, 
+                    max_chars =  self.n_chars if self.verbose == 1 else None,
+        )    
+        sep = '| '
+        
+        if q_out.ground_truth is None:
+            grade_symbol = '➖'
+        
+        elif (  (q_out.error is not None) or
+                (q_out.grading is None) or
+                (q_out.completion is None)
+            ):
+            grade_symbol = '⚠️'
             
-    
+        
+        elif q_out.grading.grade_bool:
+            grade_symbol = '✅'
+        
+        else:
+            grade_symbol = '❌'
+        
+        n_chars = self.n_chars if self.verbose == 1 else None
+            
+        s = ''
+        s += fmt(f'grade: {grade_symbol}')
+        s += sep
+        s += fmt(f'{q_out.eval_time:.2f} secs')
+        s += sep
+        if q_out.error is not None:
+            s += fmt(f'err: {q_out.error}')
+            s += sep
+        if False:
+            tps = ( (q_out.ntokens.cmp or 0) / q_out.eval_time)
+            tps = f'{tps:.1f}' if tps > 0 else 'n/a'
+            s += fmt(f'tps: {tps}')
+            s += sep
+
+        print(s, end='\n', flush=False)
+
     def __call__(self, *args: Any, **kwds: Any) -> Any:
         pass
 
@@ -124,21 +165,21 @@ class MainProgressMsg:
         ) -> None:
         if output is None: return
         if self.verbose > 0:
-            print(f'complete run_id: {output.header.run_id}')
+            print(f'run_id: {output.header.run_id}')
 
     def pre_sheet(
             self,
             sheet_obj: SheetSchema,
         ) -> None:
         if self.verbose > 0:
-            print(f"Processing sheet: {sheet_obj.name}")
+            print(f"Processing: {sheet_obj.name} ... ", end='', flush=True)
             parse_warns = {
                 e.name: e.parse_warns
                 for e in sheet_obj.questions
                 if len(e.parse_warns) > 0
             }
             if len(parse_warns) > 0:
-                print(f"Sheet: {sheet_obj.name} has {len(parse_warns)} parse warnings")
+                print(f" | {len(parse_warns)} parse warnings")
         if self.verbose > 1:
             if len(parse_warns) > 0:
                 print(json.dumps(parse_warns, indent=2))

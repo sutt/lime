@@ -3,6 +3,7 @@ from typing import (
     Tuple,
     Union,
 )
+import requests
 import tiktoken
 from openai import (
     OpenAI, 
@@ -13,35 +14,58 @@ from .base import (
     PromptModelResponse,
     ModelObj,
 )
+from ..models.errs import (
+    NetworkError,
+)
 from ..models.state import (
     ConfigLoader,
     Secrets,
 )
 
-
 module_api_key = Secrets.get('OPENAI_API_KEY')
+
+class ApiModelName(ConfigLoader):
+    _urn = {
+        'data': lambda config: config.get('LocalModels'),
+        'value': lambda data, key: (
+            data.get(key, {}).get('api_model_name')
+        )
+    }
+ApiModelName._initialize()
 
 
 class OpenAIModelObj(ModelObj):
 
-    def __init__(self, model_name: str) -> None:
-        super().__init__(model_name)
+    def __init__(
+            self, 
+            model_name: str,
+            **kwargs
+        ) -> None:
+        super().__init__(model_name, **kwargs)
         self.prompt_model_params = [
             'temperature',
             'max_tokens',
             'seed',
         ]
-        self.base_model_name = 'gpt-3.5-turbo' # TODO - add this from kwargs
+        self.api_model_name =(
+            ApiModelName._to_dict().get(model_name) or 
+            kwargs.get('api_model_name') or
+            self.model_name
+        )
 
     def check_valid(self, **kwargs) -> bool:
         try: 
             client = OpenAI(api_key=module_api_key)
             models_list = client.models.list()
-            if self.base_model_name not in models_list:
-                raise ValueError(f'model {self.base_model_name} not found in models list')
+            if self.api_model_name not in [m.id for m in models_list.data]:
+                raise ValueError(f'model `{self.api_model_name}` not found in models list')
+        # TODO - check if network connections is available
         except AuthenticationError:
             raise AuthenticationError('OpenAI API key not valid')
         except Exception as e:
+            try: requests.get('https://www.google.com/', timeout=2)
+            except requests.ConnectionError:
+                raise NetworkError('No network connection available')
             raise ValueError(f'error in check_key_is_valid: {str(e)}')
         return True
     
@@ -87,7 +111,7 @@ class OpenAIModelObj(ModelObj):
                         "content": prompt,
                     }
                 ],    
-                model=self.model_name,
+                model=self.api_model_name,
                 **params,
             )
 
@@ -113,9 +137,9 @@ if __name__ == '__main__':
         print(f'{time.time()-t0:.2f}')
         t0 = time.time()
 
-    # prompt = 'Q: What is the largest planet? A:'
+    prompt = 'Q: What is the largest planet? A:'
     # prompt = 'Q: Generate an esoteric french phrase. A:'
-    prompt = 'Q: Generate an esoteric french phrase. (Then explain why it would be considered esoteric) A:'
+    # prompt = 'Q: Generate an esoteric french phrase. (Then explain why it would be considered esoteric) A:'
     mark()
     model = OpenAIModelObj('gpt-3.5-turbo')
     mark()

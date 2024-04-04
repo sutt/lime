@@ -14,11 +14,13 @@ from ..models.state import (
     Secrets,
 )
 
-class CplServer(ConfigLoader):
+class CplServerConfig(ConfigLoader):
     domain = 'localhost'
     port = 5000
     debug = False
-CplServer._initialize()
+    endpoint_check = 'check'
+    endpoint_infer = 'infer'
+CplServerConfig._initialize()
 
 class CplServerParams(ConfigLoader):
     required_infer_keys = None
@@ -37,11 +39,11 @@ class CPLBaseServer:
 
         self.app : Flask = Flask(__name__)
         self.server_config : Dict[str, Any] = {
-            **CplServer._get_attrs().copy(), 
+            **CplServerConfig._to_dict(), 
             **server_config
         }
         self.server_params: Dict[str, Any] = {
-            **CplServerParams._get_attrs().copy(),
+            **CplServerParams._to_dict(),
             **server_params
         }
         self.secrets : Dict[str, Any] = Secrets.copy()
@@ -67,19 +69,19 @@ class CPLBaseServer:
         try:
             data = request.get_json()
         except Exception as e:
-            return jsonify({'error': f'could not parse json payload: {str(e)}'}, 400)
+            return jsonify({'error': f'could not parse json payload: {str(e)}'}), 400
         
         try:
             self.check_payload(data)
         except AssertionError as e:
-            return jsonify({'error': str(e)}, 400)
+            return jsonify({'error': str(e)}) , 400
         
         try:
             answer = self.generate_answer(**data)
         except Exception as e:
-            return jsonify({'error': f'Error on generate_answer: {str(e)}'}, 500)
-        
-        return jsonify({'answer': answer})
+            return jsonify({'error': f'Error on generate_answer: {str(e)}'}), 500
+
+        return jsonify({'answer': answer}), 200
     
     def check_payload(self, data: dict, required_keys: list = ['question']) -> None:
         '''

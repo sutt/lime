@@ -37,6 +37,11 @@ class ConfigLoader:
                 if not k.startswith('_')
         }
     @classmethod
+    def _to_dict(cls):
+        try: return cls._get_attrs().copy()
+        except: return {}
+
+    @classmethod
     def __recursive_update(cls, original, updates):
         if original is None:
             return updates or {}

@@ -196,6 +196,19 @@ def parse_markdown(
     return output
 
 
+def extract_gen_params(meta_data: dict) -> dict:
+    params = {
+        'temperature': float,
+        'max_tokens': int,
+        'seed': int,
+    }
+    gen_params = {}
+    for k, f in params.items():
+        if k in meta_data:
+            try: gen_params[k] = f(meta_data[k])
+            except: pass
+    return gen_params
+
 def parse_wrapper(
     fn: str,
     md_schema_fn: str,

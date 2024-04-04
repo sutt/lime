@@ -4,46 +4,100 @@
 # Do NOT store secrets in here. 
 # Instead use usr config dir: ~/.lime/secrets.env
 # these will be loaded to common.models.state.Secrets
+# =============
 
+# Custom Models will be utilized when specified from the -m flag on eval
+# command of specfied in ExecSettings.default_model. This will 
 LocalModels:
+  # Example of Local model where we specify (usually absolute path)
+  # to the weights file to load into llama_cpp engine.
+  # No need to set type, as it defaults to `local`.
   my_llama:
     fn: 'path/to/weights'
-  my_cpl_basic:
+  # Example of specifying a CPL model, done by setting type to `cpl`.
+  # We can also use a `profile` here to add and/or override params:
+  # (like with rag_style) wh with and/or override
+  my_cpl_rag1:
     type: cpl
     profile:
-      style: basic
-  gpt_3:
+      rag_style: basic
+      max_tokens: 20
+  # Example of OpenAI custom model which do by specifying type as `openai` 
+  # and also giving a valid `api_model_name`.
+  secret_weapon:
     type: openai
-    name: 'gpt-3.5-turbo'
-    profile:
-      top_k: 10
+    api_model_name: 'gpt-4'
 
+# LocalParams specify generation parameters used in all model / inference types. 
+# The values below are the default values.
 LocalParams:
   temperature: 0.0
   max_tokens: 100
   seed: null
 
+# These Init Params apply to the LocalModels and are passed into llama_cpp model
+# constructors.
 LocalModelInitParams:
   n_ctx: 512
   n_threads: 4
 
+# These are the main settings 
 ExecSettings:
+  # What level of verbosity that eval (and other commands) use.
+  # 0: silent, 1: some verbosity, 2: full verbosity
   verbose: 0
+  # How many random chars to add at the end of an output file.
   uuid_digits: 4
+  # Filename prefix used for finding valid input-sheets in a directory.
+  # Set to empty string to collect all files.
   input_sheet_prefix: 'input'
+  # Filename prefix used for finding valid output jsons
   output_sheet_prefix: 'output'
+  # Default model_name used when not running eval command without -m arg.
   model_name: 'gpt-3.5-turbo'
-  use_prompt_cache: False    # Maybe move to init params?
   save_tmp_file: False
+  # When using LocalModels
+  use_prompt_cache: False    # Maybe move to init params?
 
-CplServer:
+# These settings govern the hosting options of the CplServer, and are also
+# used by the CplClient to point its requests
+CplServerConfig:
+  # whether the server is looking for ssl
+  is_https: false
+  # default domain 
   domain: localhost
+  # port to run flask on
   port: 5000
+  # if the flask server should run in debug mode or not
   debug: True
+  # configuration option for the url on different actions
+  endpoint_check: check
+  endpoint_infer: infer
 
+# These parameters impact how the client communicates with CPL server
 CplClientParams:
+  # by default this is set to null, meaning it won't add anything other
+  # than the prompt in the payload of the request from client to server...
   valid_request_args: null
+  # ...however we can also make this a list of strings 
+  # e.g. ['rag_style', 'temperature'], and these parameters will be added
+  # in the payload of the request as the key names, and their respective values.
+  # see cpl_client.CPLModelObj.valid_request_args. For example:
+  # valid_request_args:
+  # - rag_style
+  # - temperature
+  # an example of specifying an argument which the cpl client will utilize.
+  rag_style: colbert
 
+# These parameters allow us to modify default behavior when CPL server.
+# is spun up.
 CplServerParams:
+  # this is simply an example parameter that server might use.
   k_retrieved: 3
+  # similiar to CplClientParams.valid_request_args, but the server will
+  # respond with a 400 if a request does not contain all parameters specified
+  # within it. By default it's set to None, so server only requires the 
+  # `question` parameter in the request payload
+  required_infer_keys: null
 
+# end config

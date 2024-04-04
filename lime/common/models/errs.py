@@ -3,6 +3,9 @@ import traceback
 
 _DEBUG_MODE = False
 
+class NetworkError(Exception):
+    pass
+
 class QuietError(Exception):
     # from: https://gist.github.com/jhazelwo/86124774833c6ab8f973323cb9c7e251
     debug_mode = _DEBUG_MODE

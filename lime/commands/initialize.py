@@ -3,6 +3,9 @@ import shutil
 from lime.common.models.errs import (
     BaseQuietError,
 )
+from lime.common.controllers.config_parse import (
+    build_config_text,
+)
 
 
 '''
@@ -11,6 +14,10 @@ Utility to help write out the following directory/files:
         - format: .lime/config.yaml
         - type=workspace: write to current working directory
         - type=usr: write to user home directory
+        - style:
+            - full: full config (default)
+            - base: minimal config
+            - bare: no comments
     - datasets: 
         - simple: .lime/data/datasets/simple
         - variety: .lime/data/datasets/variety (not implemented)        
@@ -19,6 +26,7 @@ Utility to help write out the following directory/files:
 
 def config_init(
         config_type: str = 'workspace',
+        style: str = 'full',
 ) -> None:
 
     if config_type == 'workspace':
@@ -27,8 +35,6 @@ def config_init(
         write_dir = os.path.expanduser('~')
     else:
         raise BaseQuietError(f'config_type: {config_type} must be `workspace` or `usr`')
-
-    script_dir = os.path.dirname(os.path.abspath(__file__))
 
     write_fn = 'config.yaml'
     config_dir = '.lime'
@@ -43,15 +49,10 @@ def config_init(
 
     write_fn = os.path.join(write_dir, config_dir, write_fn)
 
-    read_fn = 'template.yaml'
-    read_fn = os.path.join(script_dir, '..', 'data', 'config_model', read_fn )
-
-    #  read from template and write to config.yaml
-    with open(read_fn, 'r') as f:
-        template = f.read()
+    config_text = build_config_text(style)
 
     with open(write_fn, 'w') as f:
-        f.write(template)
+        f.write(config_text)
 
     if config_type == 'usr':
         
@@ -106,17 +107,46 @@ def dataset_init(
             raise BaseQuietError(f'file type not recognized: {read_fn}')
     
     return
-        
 
+def sheet_init() -> None:
+    
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    write_dir = os.getcwd()
+    
+    num = 1
+    while True:
+        fn = f'input-example-{num}.md'
+        if fn not in os.listdir(write_dir):
+            break
+        num += 1
+        
+    write_fn = os.path.join(write_dir, fn)
+    
+    sheet_text_fn = os.path.join(
+        script_dir, 
+        '..',
+        'data', 
+        'sheet-example.md',
+    )
+    
+    with open(sheet_text_fn, 'r') as f:
+        sheet_text = f.read()
+
+    with open(write_fn, 'w') as f:
+        f.write(sheet_text)
+
+    return
 
 def setup_parser(argparser):
 
     argparser.add_argument('init_type', nargs='?', default=None
-                          ,help='type of init: `config` or `data`')
+            ,help='type of init: `config` or `data` or `sheet`')
     
     # config init options
     argparser.add_argument('--usr',         action='store_true')
     argparser.add_argument('--workspace',   action='store_true')
+    argparser.add_argument('--full',        action='store_true')
+    argparser.add_argument('--base',        action='store_true')
     argparser.add_argument('--bare',        action='store_true')
 
     # data init options
@@ -139,8 +169,15 @@ def main(args):
         if args.get('usr'):
             config_type = 'usr'
 
+        style = 'full'
+        if args.get('base'):
+            style = 'base'
+        elif args.get('bare'):
+            style = 'bare'
+
         config_init(
             config_type = config_type,
+            style = style,
         )
 
     elif init_type == 'dataset':
@@ -152,6 +189,9 @@ def main(args):
         dataset_init(
             dataset_type = dataset_type,
         )
+
+    elif init_type == 'sheet':
+        sheet_init()
 
     else:
         raise BaseQuietError(f'init_type: {init_type} must be `config` or `dataset`')

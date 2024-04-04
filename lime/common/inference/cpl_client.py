@@ -30,7 +30,7 @@ class CPLModelObj(ModelObj):
     def __init__(self, model_name: str) -> None:
         super().__init__(model_name)
         self.profile_params : Dict[str, Any] = {
-            **CplClientParams._get_attrs().copy(), 
+            **CplClientParams._to_dict(), 
             **self.profile_params,  # base client params overidden by model specific profile vars
         }
         self.valid_request_args : Union[List[str], None] = CplClientParams.valid_request_args
