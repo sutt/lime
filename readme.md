@@ -40,9 +40,10 @@ In addition there are supplementary commands:
 ##### Run Models on Question Sheets - `lime eval <input> [args]`:
 ```
 lime eval
-  [<input>]             # input-sheet or input-directory
+  [<input>]             # input-sheet or globs
   [ -m <model_name>]    # model name
-  [ -v <verbose_int>]   # verbose level, can use -vv style, default 0
+  [ -v <verbose_int>]   # verbose level, can use -v / -vv style, default 0
+  [ -y / --dry_run  ]   # dry run, don't write output
   [ --debug]            # if set, print full stack trace on exception
 ```
 

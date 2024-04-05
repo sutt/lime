@@ -1,8 +1,9 @@
-import os, time, uuid, sys, traceback
+import os, time, uuid, sys, glob
 from datetime import datetime
 from typing import (
     Union, 
     Any,
+    List,
 )
 from lime.common.controllers.parse import (
     parse_to_obj,
@@ -44,7 +45,7 @@ class ExecSettings(ConfigLoader):
     model_name = 'gpt-3.5-turbo'
     input_sheet_prefix = 'input'
     output_sheet_prefix = 'output'
-    use_prompt_cache = True
+    use_prompt_cache = True     #TODO - move
     save_tmp_file = False
 
 ExecSettings._initialize()
@@ -56,6 +57,7 @@ def eval_sheet(
     run_id:         str,
     tmp_output_fn:  str = None,
     verbose_level:  int = 0,
+    dry_run:        bool = False,
 ) -> SheetOutputSchema:
 
     progress = SheetProgressMsg(verbose_level=verbose_level)
@@ -80,7 +82,7 @@ def eval_sheet(
     sys_prompt = sheet_obj.text
     ntokens_sys = infer_obj.count_tokens(sys_prompt)
     
-    if infer_obj.use_prompt_cache:
+    if (infer_obj.use_prompt_cache) and not(dry_run):
         infer_obj.init_llm()
         if sys_prompt is not None:
             infer_obj.eval_prompt(
@@ -100,12 +102,15 @@ def eval_sheet(
         gen_params = extract_gen_params(question.meta)
 
         progress.pre_prompt(question)
-    
-        completion, error = infer_obj.prompt_model(
-            prompt_sys  = question.text_sys,
-            prompt_usr  = question.text_usr,
-            **gen_params,
-        )
+
+        if dry_run:
+            completion, error = None, None
+        else:
+            completion, error = infer_obj.prompt_model(
+                prompt_sys  = question.text_sys,
+                prompt_usr  = question.text_usr,
+                **gen_params,
+            )
         
         question_output = QuestionOutput(
             name            = question.name,
@@ -137,9 +142,8 @@ def eval_sheet(
         output.questions.append(question_output)
 
         if tmp_output_fn is not None:
-            s = output.model_dump_json(indent=2)
             with open(tmp_output_fn, 'w') as f:
-                f.write(s)
+                f.write(output.model_dump_json(indent=2))
 
         progress.post_prompt(question_output)
 
@@ -148,45 +152,153 @@ def eval_sheet(
     return output
 
 
-def get_setting(args: dict, key: str, default: Any = None):
-    if args.get(key) is not None:
-        return args[key]
-    else:
-        try: 
-            return getattr(ExecSettings, key)
-        except Exception as e: 
-            return default
-        
+def make_output_fp(
+        sheet_fn: str, 
+        model_name: str, 
+        run_id: str, 
+    ) -> str:
+    sheet_dir = os.path.dirname(sheet_fn)
+    fn = os.path.basename(sheet_fn)
+    input_prefix = ExecSettings.input_sheet_prefix
+    output_prefix = ExecSettings.output_sheet_prefix
+    fn = fn.replace('.md', '')
+    fn = fn.replace(input_prefix, '')
+    sep = '-' if (fn[0].isalpha() or fn[0].isdigit()) else ''
+    output_fn = f'{output_prefix}{sep}{fn}-{model_name}-{run_id}.json'
+    output_fp = os.path.join(sheet_dir, output_fn)
+    return str(output_fp)
 
-def collect_input_sheets(
-    sheets_dir: str,
-    fn_keyword: Union[None, str] = 'input',  #TODO - from Configs
+
+def make_tmp_output_fp(output_fp: str) -> Union[str, None]:
+    if ExecSettings.save_tmp_file:
+        return str(os.path.join(
+            os.path.dirname(output_fp),
+            f'tmp-{os.path.basename(output_fp)}'
+        ))
+    return None
+
+    
+def continue_or_exit() -> None:
+    try:
+        print('\n')
+        val = input('Press Enter to continue, any other key to quit...')
+        if val != '': sys.exit(1)
+        else: return
+    except KeyboardInterrupt:
+        print('Keyboard Interrupt.')
+        sys.exit(1)
+    except Exception as e:
+        raise BaseQuietError(f'Error trying to continue: {str(e)}')
+
+
+def cleanup_tmp(tmp_output_fp: Union[None, str]) -> None:
+    if tmp_output_fp is None: return
+    if os.path.exists(tmp_output_fp):
+        try: os.remove(tmp_output_fp)
+        except Exception as e:
+            err_msg = f'Error removing tmp: {tmp_output_fp}: {e}'
+            if BaseQuietError.debug_mode: BaseQuietError(err_msg)
+            else:print(err_msg)
+
+
+def batch_eval(
+    sheet_fns: List[str],
+    model_name: str,
+    run_id: str,
+    dry_run: bool = False,
+    use_prompt_cache: bool = True,
+    verbose_level:  int = 0,
+    ) -> None:
+    
+    progress = MainProgressMsg(verbose_level=verbose_level)
+
+    progress.pre_loop(sheet_fns=sheet_fns)
+
+    try:
+        # TODO - Make this init params
+        infer_constructor_args = {
+            'use_prompt_cache': use_prompt_cache,    
+        }
+    
+        infer_obj = get_infer_obj(model_name, **infer_constructor_args)
+    
+        progress.infer_init(infer_obj, infer_obj.check_valid())
+    
+    except Exception as e:
+        raise BaseQuietError(f'Error creating infer_obj: {str(e)}')
+    
+    for sheet_fn in sheet_fns:
+        
+        output_fp = make_output_fp(sheet_fn, model_name, run_id)
+        
+        tmp_output_fp = make_tmp_output_fp(output_fp)
+        
+        sheet_obj = parse_to_obj(sheet_fn)
+
+        progress.pre_sheet(sheet_obj)
+
+        try:
+            output = eval_sheet(
+                sheet_obj=sheet_obj,
+                infer_obj=infer_obj,
+                run_id=run_id,
+                tmp_output_fn=tmp_output_fp,
+                verbose_level= verbose_level,
+                dry_run=dry_run,
+            )
+        
+        except KeyboardInterrupt:
+            continue_or_exit()
+            output = None
+
+        except Exception as e:
+            raise BaseQuietError(f'Error processing: {sheet_fn}: {str(e)}')
+
+        with open(output_fp, 'w') as f:
+            if output: f.write(output.model_dump_json(indent=2))
+
+        cleanup_tmp(tmp_output_fp)
+    
+    progress.post_loop(output)
+
+
+def filter_input_sheet(
+    fn: str,
+    fn_keyword: str = ExecSettings.input_sheet_prefix,
     fn_ext: str = '.md',
-    fn_exclude_keyword: Union[None, str] = None,
-) -> list:
-    fns = os.listdir(sheets_dir)
-    fns = [e for e in fns if e.endswith(fn_ext)]
-    if fn_keyword is not None:
-        fns = [e for e in fns if fn_keyword in e]
-    if fn_exclude_keyword is not None:
-        fns = [e for e in fns if fn_exclude_keyword not in e]
-    if sheets_dir.endswith('/') is False:
-        sheets_dir += '/'
-    fns = [sheets_dir + e for e in fns]
-    return fns
+) -> bool:
+    return (fn_keyword in fn) and (fn_ext in fn)
+
+
+def filter_input_sheets(fns: List[str]) -> List[str]:
+    return [fn for fn in fns if filter_input_sheet(fn)]
+
+
+def get_sheet_fns(input_paths : List[str]) -> List[str]:
+    all_sheet_fns = []
+    for input_path in input_paths:
+        if os.path.isfile(input_path):
+            matched_files = [input_path]
+        elif input_path == '.':
+            matched_files = filter_input_sheets(glob.glob('*'))
+        elif os.path.isdir(input_path):
+            input_path = os.path.join(input_path, '*')        
+            matched_files = filter_input_sheets(glob.glob(input_path))
+        else:
+            matched_files = filter_input_sheets(glob.glob(input_path))
+        if matched_files: all_sheet_fns += matched_files
+    if len(all_sheet_fns) == 0:
+        raise BaseQuietError(f'No input files found in: {input_paths}')
+    return all_sheet_fns
 
 
 def setup_parser(parser):
     
-    # optional input file/dir arg
-    parser.add_argument('input', nargs='?', default=None
-                        ,help='Input file or directory')
-    # If not above, one of these two required
-    parser.add_argument('-f', '--sheet_fn',      type=str)
-    parser.add_argument('-d', '--sheets_dir',    type=str)
+    # input globs(s) or file(s)
+    parser.add_argument('input_paths', metavar='N', type=str, nargs='+',
+                        help='an input path or glob pattern')
     # Optional arguments, will overwrite config loaded defaults
     parser.add_argument('-m', '--model_name',    type=str)
-    parser.add_argument('-o', '--output_dir',    type=str)
     parser.add_argument('-y', '--dry_run',       action='store_true')
     parser.add_argument('-v', '--verbose',       action='count')
     parser.add_argument('-b', '--debug',         action='store_true')
@@ -196,128 +308,25 @@ def main(args):
 
     args = vars(args)
 
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-
     if args.get('debug'):
         QuietError.debug_mode = True
 
-    # Check if the positional argument 'input' is provided
-    input_path = args.get('input')
-    
-    if input_path:
-        if os.path.isfile(input_path):
-            args['sheet_fn'] = input_path
-        elif os.path.isdir(input_path):
-            args['sheets_dir'] = input_path
-        else:
-            raise BaseQuietError(f'Input path does not exist: {input_path}')
+    sheet_fns       = get_sheet_fns(args['input_paths'])
 
-    # add defaults / override with cli args
-    sheet_fn = args['sheet_fn']
-    sheets_dir = args['sheets_dir']
+    model_name      = args.get('model_name')    or ExecSettings.model_name
+    verbose_level   = args.get('verbose')       or ExecSettings.verbose
+    dry_run         = args.get('dry_run')
 
-    # validation
-    if sheet_fn is None and sheets_dir is None:
-        raise BaseQuietError('Required Arg Missing: `input`')
+    run_id          = uuid.uuid4().hex[:ExecSettings.uuid_digits]
 
-    if sheet_fn is not None and sheets_dir is not None:
-        raise BaseQuietError('cant use both -f/--sheet_fn or -d/--sheets_dir args')
-        
-    if sheet_fn is not None:
-        if not os.path.isfile(sheet_fn):
-            raise BaseQuietError(f'File Not Found: {sheet_fn}')
-        input_dir = "./"
-        sheet_fns = [sheet_fn]
-        
-    if sheets_dir is not None:
-        if not(os.path.isdir(sheets_dir)):
-            raise BaseQuietError(f'Not A Directory: {sheets_dir}')
-        input_dir = sheets_dir
-        if input_dir[-1] != '/':
-            input_dir += '/'
-        sheet_fns = collect_input_sheets(sheets_dir)
-        if len(sheet_fns) == 0:
-            raise BaseQuietError(f'No input files found in: {os.path.abspath(sheets_dir)}')
+    use_prompt_cache = ExecSettings.use_prompt_cache  # TODO - move
 
-    if args['output_dir'] is not None:
-        output_dir = args['output_dir']
-        if os.path.isdir(output_dir):
-            raise BaseQuietError(f'Not A Directory: {output_dir}')
-    else: 
-        output_dir = input_dir
-
-    input_schema_fn = os.path.join(script_dir, '..', 'data', 'md-schema.yaml')
-
-    model_name      = get_setting(args, 'model_name', )
-    dry_run         = get_setting(args, 'dry_run', default=False)
-    verbose_level   = get_setting(args, 'verbose', default=0)
-
-    use_prompt_cache = ExecSettings.use_prompt_cache
-    
-    run_id = uuid.uuid4().hex[:ExecSettings.uuid_digits]
-    
-    progress = MainProgressMsg(verbose_level=verbose_level)
-
-    progress.pre_loop(sheet_fns=sheet_fns)
-
-    try:
-        infer_constructor_args = {
-            'use_prompt_cache': use_prompt_cache,    
-        }
-        infer_obj = get_infer_obj(model_name, **infer_constructor_args)
-        progress.infer_init(infer_obj, infer_obj.check_valid())
-    except Exception as e:
-        raise BaseQuietError(f'Error creating infer_obj: {str(e)}', 
-                             traceback.format_exc())
-    
-    for sheet_fn in sheet_fns:
-        
-        tmp_fn = sheet_fn.replace(input_dir, '')
-        tmp_fn = tmp_fn.replace('input', '')
-        tmp_fn = tmp_fn.replace('.md', '')
-        output_fn = f'output{tmp_fn}-{model_name}-{run_id}'
-        output_fp = output_dir + output_fn + '.json'
-        
-        tmp_output_fp = None
-        if ExecSettings.save_tmp_file:
-            tmp_output_fp = output_dir + 'tmp.' + output_fn + '.json'
-        
-        sheet_obj = parse_to_obj(
-            sheet_fn,
-            input_schema_fn,    
-        )
-
-        sheet_obj.sheet_fn = sheet_fn
-
-        progress.pre_sheet(sheet_obj)
-        
-        if dry_run:
-            # TODO - we want to proceed into eval_sheet eventually
-            output = None
-            continue
-
-        try:
-            output = eval_sheet(
-                sheet_obj=sheet_obj,
-                infer_obj=infer_obj,
-                run_id=run_id,
-                tmp_output_fn=tmp_output_fp,
-                verbose_level= verbose_level,
-            )
-        except KeyboardInterrupt:
-            print('Keyboard Interrupt.')
-            sys.exit(1)
-        except Exception as e:
-            raise BaseQuietError(f'Error processing sheet: {sheet_fn}: {str(e)}')
-
-        with open(output_fp, 'w') as f:
-            f.write(output.model_dump_json(indent=2))
-
-        if (tmp_output_fp is not None) and os.path.isfile(tmp_output_fp):
-            try:
-                os.remove(tmp_output_fp)
-            except Exception as e:
-                BaseQuietError(f'Error removing temp file: {tmp_output_fp}: {e}')
-    
-    progress.post_loop(output)
+    batch_eval(
+        sheet_fns = sheet_fns,
+        model_name = model_name,
+        run_id = run_id,
+        dry_run = dry_run,
+        use_prompt_cache = use_prompt_cache,
+        verbose_level = verbose_level,
+    )
         

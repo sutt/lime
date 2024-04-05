@@ -225,12 +225,20 @@ def parse_wrapper(
 
 def parse_to_obj(
     fn: str,
-    md_schema_fn: str,
+    md_schema_fn: str = None,
 ) -> SheetSchema:
+    
+    if md_schema_fn is None:
+        md_schema_fn = os.path.join(
+            os.path.dirname(__file__), 
+            '../../data/md-schema.yaml'
+        )
 
     md_doc = parse_wrapper(fn, md_schema_fn)
 
     sheet_obj = SheetSchema.from_mddoc(md_doc)
+
+    sheet_obj.sheet_fn = os.path.basename(fn)
 
     return sheet_obj
 

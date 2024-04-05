@@ -1,8 +1,11 @@
 import os, sys, json
 from unittest import mock
-
+from contextlib import contextmanager
+from openai.types.chat import ChatCompletion
 from lime.commands.eval import (
     eval_sheet, 
+    batch_eval,
+    get_sheet_fns,
 )
 from lime.common.controllers.parse import (
     parse_to_obj,
@@ -13,10 +16,7 @@ from lime.common.inference.base import (
 from lime.common.inference.api_openai import (
     OpenAIModelObj,
 )
-from openai.types.chat import ChatCompletion
 
-# from lime.common.controllers.parse import parse_wrapper
-# from lime.common.inference.local_cpp import get_model_fn
 
 def load_chat_completion(fn: str) -> ChatCompletion:
     '''need this since oai_api.get_completion takes a ChatCompletion object'''
@@ -36,18 +36,12 @@ def test_stub_loaded():
     msg = model._get_completion(MODEL_RESPONSE_STUB)
     assert len(msg) > 0
 
-def test_get_model_fn():
-    '''
-        TODO - add mocks for workspace / usr config so we can get
-                fn for a model name
-    '''
-    pass
 
 def test_eval_basic_1():
     '''
         - demonstrate mocking submit_prompt
         - checks on the output object
-
+        - infer_obj = OpenAIModelObj
     '''
 
     input_md = './tests/data/input-three.md'
@@ -77,7 +71,7 @@ def test_eval_basic_1():
     assert output.header.run_id == 'aaff'
     assert output.header.name_model == 'gpt-3.5-turbo'
     # not set inside this function, is set outside in the calling function eval:main
-    assert output.header.sheet_fn is None 
+    assert output.header.sheet_fn == 'input-three.md'
 
     #  various questions level properties
     output.questions[0].name == 'Q1'
@@ -89,21 +83,102 @@ def test_eval_basic_1():
     assert output.questions[1].completion == STUB_COMPLETION # same for both questions
     assert output.questions[0].error is None
 
-    # assert output.questions[0].ntokens is None
-
-    # note this derived separately and not attached to the stub
-    STUB_NTOKENS = {
-        "usr": 30,
-        "sys": 17,
-        "cmp": 11   # this is not certain, dont depend on it
-    }
+    # basic check on ntokens
     ntokens = output.questions[0].ntokens
     ntokens = ntokens.model_dump()
     assert ntokens.get('usr') > 0 
     assert ntokens.get('sys') > 0
 
+    # note this derived separately and not attached to the stub
+    # STUB_NTOKENS = {
+    #     "usr": 30,
+    #     "sys": 17,
+    #     "cmp": 11   # this is not certain, dont depend on it
+    # }
     # assert output.questions[0].ntokens.get('sys') == STUB_NTOKENS['sys']
     # assert output.questions[0].ntokens.get('usr') == STUB_NTOKENS['usr']
 
 
+@contextmanager
+def change_dir(target_directory):
+    """Context manager for changing the current working directory."""
+    original_directory = os.getcwd()
+    os.chdir(target_directory)
+    try:
+        yield
+    finally:
+        os.chdir(original_directory)
+
+def test_get_sheet_fns_1():
+
+    data_dir = './tests/data/dir-three/a'
     
+    input_paths = ['.']
+    ANSWER = ['input-common-sense-1.md', 'input-common-sense-2.md', 'input-xx-a.md', 'input-xx-b.md', 'input-yy-a.md', 'input-yy-b.md']
+    with change_dir(data_dir):
+        sheet_fns = get_sheet_fns(input_paths)
+    assert len(sheet_fns) == len(ANSWER)
+    for fn in ANSWER:
+        assert fn in sheet_fns
+
+    input_paths = ['input-xx-a.md']
+    ANSWER = ['input-xx-a.md']
+    with change_dir(data_dir):
+        sheet_fns = get_sheet_fns(input_paths)
+    assert len(sheet_fns) == len(ANSWER)
+    for fn in ANSWER:
+        assert fn in sheet_fns
+
+    input_paths = ['apple.md']
+    ANSWER = ['apple.md']
+    with change_dir(data_dir):
+        sheet_fns = get_sheet_fns(input_paths)
+    assert len(sheet_fns) == len(ANSWER)
+    for fn in ANSWER:
+        assert fn in sheet_fns
+
+    input_paths = ['*xx*']
+    ANSWER = ['input-xx-a.md', 'input-xx-b.md']
+    with change_dir(data_dir):
+        sheet_fns = get_sheet_fns(input_paths)
+    assert len(sheet_fns) == len(ANSWER)
+    for fn in ANSWER:
+        assert fn in sheet_fns
+
+    input_paths = ['xx*']
+    ANSWER = None
+    with change_dir(data_dir):
+        try:
+            sheet_fns = get_sheet_fns(input_paths)
+            assert False, 'expected error not raised'
+        except Exception as e:
+            assert "No input files found in: ['xx*']" in str(e), 'expected error message not found'
+
+    input_paths = ['*xx*', '*yy*']
+    ANSWER = ['input-xx-a.md', 'input-xx-b.md', 'input-yy-a.md', 'input-yy-b.md']
+    with change_dir(data_dir):
+        sheet_fns = get_sheet_fns(input_paths)
+    assert len(sheet_fns) == len(ANSWER)
+    for fn in ANSWER:
+        assert fn in sheet_fns
+        
+    input_paths = ['*xx*', 'apple.md']
+    ANSWER = ['input-xx-a.md', 'input-xx-b.md', 'apple.md']
+    with change_dir(data_dir):
+        sheet_fns = get_sheet_fns(input_paths)
+    assert len(sheet_fns) == len(ANSWER)
+    for fn in ANSWER:
+        assert fn in sheet_fns
+
+    input_paths = ['*xx*', 'sdhsgjdgsjd.md']
+    ANSWER = ['input-xx-a.md', 'input-xx-b.md']
+    with change_dir(data_dir):
+        sheet_fns = get_sheet_fns(input_paths)
+    assert len(sheet_fns) == len(ANSWER)
+    for fn in ANSWER:
+        assert fn in sheet_fns
+
+        
+if __name__ == '__main__':
+    test_get_sheet_fns_1()
+    print('done')

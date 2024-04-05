@@ -7,9 +7,6 @@ from lime.common.models.internal import (
 from lime.common.controllers.parse import (
     parse_to_obj,
 )
-from lime.commands.eval import (
-    collect_input_sheets
-)
 
 def test_parse_to_obj_1():
     '''
@@ -31,8 +28,8 @@ def test_parse_to_obj_1():
     assert isinstance(obj, SheetSchema)
     assert isinstance(obj.questions[0], QuestionSchema)
 
-    # This isn't assigned in parse, but in eval_sheet proc 
-    assert obj.sheet_fn is None
+    # 
+    assert obj.sheet_fn == 'input-two.md'
 
     # We'll look at EVAL-ENDCHAR behavior to chop trailing whitespace
     assert obj.questions[0].text_usr == 'Q: What did the early bird get?\nA: '
@@ -74,22 +71,6 @@ def test_parse_to_obj_2():
     assert obj.questions[1].meta.get('answer_suggested_length') == '10'  # should be set from sheet-level meta
     
     
-
-def test_collect_input_sheets_1():
-    '''
-        test that we only collect sheets with prefix `input`
-        TODO - change the setting
-    '''
-    
-    sheets_dir = './tests/data/dir-one'
-
-    input_sheets = collect_input_sheets(
-        sheets_dir=sheets_dir,
-    )
-    
-    assert len(input_sheets) == 2
-    assert './tests/data/dir-one/input-two.md' in input_sheets
-    assert './tests/data/dir-one/input-one.md' in input_sheets
 
 def test_parse_warns_1():
 

@@ -58,7 +58,7 @@ class SheetProgressMsg:
             ])
             s =  f'Completed {total_questions} questions |'
             s += f' {num_errors} errors | '
-            print(s, end='', flush=True)
+            print(s)
     
     def pre_prompt(
             self, 

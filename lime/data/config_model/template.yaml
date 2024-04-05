@@ -41,7 +41,7 @@ LocalModelInitParams:
   n_ctx: 512
   n_threads: 4
 
-# These are the main settings 
+# These are the main settings for running eval command
 ExecSettings:
   # What level of verbosity that eval (and other commands) use.
   # 0: silent, 1: some verbosity, 2: full verbosity
@@ -55,6 +55,8 @@ ExecSettings:
   output_sheet_prefix: 'output'
   # Default model_name used when not running eval command without -m arg.
   model_name: 'gpt-3.5-turbo'
+  # Set to true, to write after each question to tmp-{outputfn}.json
+  # Useful for saving progress over long runs
   save_tmp_file: False
   # When using LocalModels
   use_prompt_cache: False    # Maybe move to init params?
