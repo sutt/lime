@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=40.8.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lime-green"
+version = "0.1.0"
+authors = [
+  { name="Will Sutton", email="wsutton17@gmail.com" },
+]
+description = "A cli based micro-framework for LLM evals"
+readme = "README.md"
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "PyYAML",
+    "python-dotenv",
+    "pydantic",
+    "pandas",
+    "tabulate",
+    "openai",
+    "tiktoken",
+    "flask",
+]
+
+[project.urls]
+Homepage = "https://github.com/sutt/lime"
+Issues = "https://github.com/sutt/lime/issues"
+
+[project.scripts]
+lime = "lime.main:main"
+
+[project.optional-dependencies]
+dev = ["pytest", "jupyter", "llama_cpp_python"]
+llama_cpp = ["llama_cpp_python"]

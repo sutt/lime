@@ -1,12 +1,22 @@
 from setuptools import setup, find_packages
 
 setup(
-    name='lime',
-    version='0.1',
+    name='lime-green',
+    version='0.1.0',
     description='cli-based micro-framework for llm evals',
     author='Will Sutton',
     author_email='wsutton17@gmail.com',
-    packages=find_packages(include=['lime', 'lime.*']),
+    packages=find_packages(),
+    package_dir={'lime': 'lime'},
+    package_data={
+        'lime': [
+            'data/*', 
+            'data/datasets/*', 
+            'data/datasets/simple/*', 
+            'data/config_model/*'
+        ],        
+    },
+    setup_requires=['wheel'],
     install_requires=[
         'PyYAML',
         'python-dotenv',
@@ -20,8 +30,6 @@ setup(
     extras_require={
         'dev': ['pytest', 'jupyter', 'llama_cpp_python'],
         'llama_cpp': ['llama_cpp_python'],
-        # 'together_ai': ['together_ai_python'],
-        # 'transformers': ['transformers'],
     },
     entry_points={
         'console_scripts': [
