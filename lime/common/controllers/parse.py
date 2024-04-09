@@ -1,6 +1,9 @@
 import os
 import json
 import yaml
+from typing import (
+    List,
+)
 from pydantic import (
     BaseModel
 )
@@ -16,7 +19,7 @@ ENDCHAR_MD_TOKENS = ['|EVAL-ENDCHAR|', '<EVAL-ENDCHAR>']
 
 def strip_end_token(
         text : str,
-        endchar_tokens : list[str] = ENDCHAR_MD_TOKENS,
+        endchar_tokens : List[str] = ENDCHAR_MD_TOKENS,
 ) -> str:
     endchar_ind =  max([text.find(tok) for tok in endchar_tokens])
     if endchar_ind != -1:
