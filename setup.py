@@ -6,7 +6,7 @@ setup(
     description='cli-based micro-framework for llm evals',
     author='Will Sutton',
     author_email='wsutton17@gmail.com',
-    packages=find_packages(),
+    packages=['lime'],
     install_requires=[
         'PyYAML',
         'python-dotenv',
