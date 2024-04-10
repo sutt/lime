@@ -1,5 +1,5 @@
 import os, sys, json
-from unittest import mock
+from unittest.mock import patch
 from contextlib import contextmanager
 from openai.types.chat import ChatCompletion
 from lime.commands.eval import (
@@ -53,7 +53,7 @@ def test_eval_basic_1():
     completion = infer_obj._get_completion(MODEL_RESPONSE_STUB)
     mock_return_value = PromptModelResponse(completion, None)
     
-    with mock.patch('lime.common.inference.api_openai.OpenAIModelObj.prompt_model') as mock_submit_prompt:
+    with patch('lime.common.inference.api_openai.OpenAIModelObj.prompt_model') as mock_submit_prompt:
             
         mock_submit_prompt.return_value = mock_return_value
             
@@ -109,6 +109,7 @@ def change_dir(target_directory):
     finally:
         os.chdir(original_directory)
 
+
 def test_get_sheet_fns_1():
 
     data_dir = './tests/data/dir-three/a'
@@ -121,6 +122,7 @@ def test_get_sheet_fns_1():
     for fn in ANSWER:
         assert fn in sheet_fns
 
+    # single file
     input_paths = ['input-xx-a.md']
     ANSWER = ['input-xx-a.md']
     with change_dir(data_dir):
@@ -129,6 +131,7 @@ def test_get_sheet_fns_1():
     for fn in ANSWER:
         assert fn in sheet_fns
 
+    # single file - without proper prefix
     input_paths = ['apple.md']
     ANSWER = ['apple.md']
     with change_dir(data_dir):
@@ -137,6 +140,7 @@ def test_get_sheet_fns_1():
     for fn in ANSWER:
         assert fn in sheet_fns
 
+    # wildcard expression
     input_paths = ['*xx*']
     ANSWER = ['input-xx-a.md', 'input-xx-b.md']
     with change_dir(data_dir):
@@ -145,6 +149,7 @@ def test_get_sheet_fns_1():
     for fn in ANSWER:
         assert fn in sheet_fns
 
+    # wildcard that does not match any file
     input_paths = ['xx*']
     ANSWER = None
     with change_dir(data_dir):
@@ -154,6 +159,7 @@ def test_get_sheet_fns_1():
         except Exception as e:
             assert "No input files found in: ['xx*']" in str(e), 'expected error message not found'
 
+    # multiple wildcards
     input_paths = ['*xx*', '*yy*']
     ANSWER = ['input-xx-a.md', 'input-xx-b.md', 'input-yy-a.md', 'input-yy-b.md']
     with change_dir(data_dir):
@@ -162,6 +168,7 @@ def test_get_sheet_fns_1():
     for fn in ANSWER:
         assert fn in sheet_fns
         
+    # valid wildcard + valid file
     input_paths = ['*xx*', 'apple.md']
     ANSWER = ['input-xx-a.md', 'input-xx-b.md', 'apple.md']
     with change_dir(data_dir):
@@ -170,9 +177,78 @@ def test_get_sheet_fns_1():
     for fn in ANSWER:
         assert fn in sheet_fns
 
+    # valid wildcard + invalid file
     input_paths = ['*xx*', 'sdhsgjdgsjd.md']
     ANSWER = ['input-xx-a.md', 'input-xx-b.md']
     with change_dir(data_dir):
+        sheet_fns = get_sheet_fns(input_paths)
+    assert len(sheet_fns) == len(ANSWER)
+    for fn in ANSWER:
+        assert fn in sheet_fns
+
+
+# stubbing configs is going to require the reload certain modules
+import importlib
+
+def reset_imports():
+    '''
+        Needed before each call to construct the infer_obj
+        this allows the new config stub to propagate to the 
+        infer_obj instead of using value attained from first
+        import.
+    '''
+    modules = [
+        'lime.common.models.config',
+        'lime.common.models.state',
+        'lime.common.inference.base',
+    ]
+    for m in modules:
+        importlib.reload(sys.modules[m])
+
+patch_path_usr = 'lime.common.models.utils.get_usr_config_dir'
+patch_path_ws  = 'lime.common.models.utils.get_workspace_config_dir'
+# patch_ret_ws   = './tests/data/model_cfg/'
+
+@contextmanager
+def change_dir(target_directory):
+    """Context manager for changing the current working directory."""
+    original_directory = os.getcwd()
+    os.chdir(target_directory)
+    try:
+        yield
+    finally:
+        os.chdir(original_directory)
+
+
+def test_get_sheet_fns_2():
+
+    data_dir = './tests/data/dir-three/a'
+    config_dir = os.path.abspath('./tests/data/my_cfg/get_sheet_fns_2/.lime')
+    
+    # baseline, no config yet
+    input_paths = ['.']
+    ANSWER = ['input-common-sense-1.md', 'input-common-sense-2.md', 'input-xx-a.md', 'input-xx-b.md', 'input-yy-a.md', 'input-yy-b.md']
+    with (
+        patch(patch_path_usr,   return_value=None),
+        patch(patch_path_ws,    return_value=None),
+        change_dir(data_dir)
+        ):
+        reset_imports()
+        sheet_fns = get_sheet_fns(input_paths)
+    assert len(sheet_fns) == len(ANSWER)
+    for fn in ANSWER:
+        assert fn in sheet_fns
+
+    # adding config with ExecSettings.input_sheet_prefix = ''
+    # therefore it should pick up all files in dir
+    input_paths = ['.']
+    ANSWER = ['input-common-sense-1.md', 'input-common-sense-2.md', 'input-xx-a.md', 'input-xx-b.md', 'input-yy-a.md', 'input-yy-b.md', 'apple.md', 'orange.md', 'readme.md']
+    with (
+        patch(patch_path_usr,   return_value=None),
+        patch(patch_path_ws,    return_value=config_dir),
+        # change_dir(data_dir)
+        ):
+        reset_imports()
         sheet_fns = get_sheet_fns(input_paths)
     assert len(sheet_fns) == len(ANSWER)
     for fn in ANSWER:

@@ -1,0 +1,16 @@
+# LIME config file, generated with lime init command
+# template lime v0.1 config:
+
+# Do NOT store secrets in here. 
+# Instead use usr config dir: ~/.lime/secrets.env
+# these will be loaded to common.models.state.Secrets
+# =============
+
+ExecSettings:
+  input_sheet_prefix: ''
+  output_sheet_prefix: 'output'
+
+
+
+
+
