@@ -30,6 +30,44 @@ class ExecSettings(ConfigLoader):
 ExecSettings._initialize()
 
 
+class AggSettings(ConfigLoader):
+    max_width = 60
+    max_height = 7
+    max_chars = 300
+    replaces_br = True
+    replaces_tags = True
+    no_format = False
+
+AggSettings._initialize()
+
+
+def fmt_field(
+    data: pd.DataFrame, 
+    field: str, 
+    md_style: bool = False,
+    max_width: int = 30,
+    max_height: int = 3,
+    max_chars: int = 90,
+    ) -> pd.DataFrame:
+    '''
+        wrapper for applying formatting to large text fields like `completion`
+    '''
+    replace_pairs = []
+    if AggSettings.replaces_tags and md_style:
+        replace_pairs += [('<', '&lt;'), ('>', '&gt;')]
+    if AggSettings.replaces_br and md_style:
+        replace_pairs += [('\n', '<br>')] 
+    
+    return fmt_text_field(
+            data, 
+            field, 
+            max_width   = AggSettings.max_width if md_style else max_width,
+            max_height  = AggSettings.max_height if md_style else max_height, 
+            max_chars   = AggSettings.max_chars if md_style else max_chars, 
+            replaces    = replace_pairs,
+    )
+    
+
 def build_data_wrapper(
     input_glob: str,
     ) -> pd.DataFrame:
@@ -104,16 +142,8 @@ def do_completions(
     no_format: bool = False,
     ) -> str:
 
-    if not(no_format):
-
-        data = fmt_text_field(
-            data, 
-            'completion', 
-            max_width=60 if md_style else 30,
-            max_height=7 if md_style else 3, 
-            max_chars=300 if md_style else 30,
-            replaces=[('\n', '<br>')] if md_style else [],
-        )
+    if not(no_format) or not(AggSettings.no_format):
+        data = fmt_field(data, 'completion', md_style)
     
     add_index_cols = []
 
@@ -134,12 +164,7 @@ def do_discrepancies(
     ) -> str:
     
     if is_full:
-        
-        data = fmt_text_field(
-            data, 
-            'completion', 
-            max_chars=300 if md_style else 20,
-        )
+        data = fmt_field(data, 'completion', md_style, max_chars=20)
 
     add_values = ['completion'] if is_full else []
 
@@ -217,6 +242,7 @@ def main(args):
         s_output = do_completions(
             data=data,
             md_style=md_style,
+            no_format=no_format,
         )
     
     elif args.get('discrepancies'):

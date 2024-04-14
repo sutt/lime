@@ -93,9 +93,14 @@ By default this is a dry run, use the `-w` flag to write the changes to the outp
 
 ```
 lime init
-  <init_type>           # `config` or `dataset`
-  [ --usr ]             # create config in home directory
+  <init_type>           # `config` or `dataset` or `sheet`
   [ --simple]           # create `simple` dataset
+  [ --usr ]             # create config in home directory
+  [ --inert ]           # for config, comments: present | settings: commented
+  [ --full ]            # for config, comments: present | settings: active
+  [ --bare ]            # for config, comments: no      | settings: active
+  [ --blank ]           # for config, comments: no      | settings: no
+
 ```
 
 Will add files of a template:

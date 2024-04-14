@@ -59,7 +59,6 @@ class OpenAIModelObj(ModelObj):
             models_list = client.models.list()
             if self.api_model_name not in [m.id for m in models_list.data]:
                 raise ValueError(f'model `{self.api_model_name}` not found in models list')
-        # TODO - check if network connections is available
         except AuthenticationError:
             raise AuthenticationError('OpenAI API key not valid')
         except Exception as e:

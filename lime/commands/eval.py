@@ -142,7 +142,7 @@ def eval_sheet(
         output.questions.append(question_output)
 
         if tmp_output_fn is not None:
-            with open(tmp_output_fn, 'w') as f:
+            with open(tmp_output_fn, 'w', encoding='utf-8', errors='replace') as f:
                 f.write(output.model_dump_json(indent=2))
 
         progress.post_prompt(question_output)
@@ -254,7 +254,7 @@ def batch_eval(
         except Exception as e:
             raise BaseQuietError(f'Error processing: {sheet_fn}: {str(e)}')
 
-        with open(output_fp, 'w') as f:
+        with open(output_fp, 'w', encoding='utf-8', errors='replace') as f:
             if output: f.write(output.model_dump_json(indent=2))
 
         cleanup_tmp(tmp_output_fp)

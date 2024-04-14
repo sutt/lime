@@ -68,5 +68,9 @@ def build_data(results_fp):
     result_fns = get_json_result_fns(results_fp)
     tbls = []
     for result_fn in result_fns:
-        tbls.append(build_full_table(result_fn))
+        try:
+            tbl = build_full_table(result_fn)
+            tbls.append(tbl)
+        except Exception as e:
+            pass
     return pd.concat(tbls)

@@ -76,6 +76,23 @@ CplServerConfig:
   endpoint_check: check
   endpoint_infer: infer
 
+# These settings are used for report collection and display, the `agg` command.
+# These settings override the settings applied when running --md setting, or
+# automatically when you pipe the output to a file. There most effect the 
+# reformatting of the potentially long text of `completion`
+AggSettings:
+  # how many characters wide the output should be; broken up by line breaks
+  max_width: 60
+  # max number of lines to display
+  max_height: 7
+  # max number of characters to display; all further characters truncated
+  max_chars: 300
+  # set to true, converts line carriages (`\n`) to html line breaks (`<br>`)
+  replaces_br: True
+  # set to true, turns off all the above re-formatting options
+  no_format: False
+
+
 # These parameters impact how the client communicates with CPL server
 CplClientParams:
   # by default this is set to null, meaning it won't add anything other

@@ -23,6 +23,7 @@ def fuzzier_match(
         completion: str,
         allow_just_letter: bool = False,
         allow_any_letter_style: bool = False,
+        answer_contained: bool = False,
         choices: Union[None, dict] = None,
 ) -> bool:
     
@@ -39,6 +40,10 @@ def fuzzier_match(
      
     if completion.find(ground_truth) != -1:
         return True
+    
+    if answer_contained:
+        if completion.find(ground_truth.strip()) != -1:
+            return True
     
     if allow_just_letter:
         scan_length = 5

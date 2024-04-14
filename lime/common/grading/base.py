@@ -49,6 +49,7 @@ def grade_array(
                 ground_truth=answer, 
                 completion=completion,
                 allow_just_letter=liberal_grading,
+                answer_contained=liberal_grading,
             )
         grades.append(grade)
 

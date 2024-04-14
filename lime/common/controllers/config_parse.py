@@ -32,21 +32,29 @@ def build_config_text(
 
     # add lines based on a) whether it's a comment b) style
     for line in lines[header_sep_index:]:
-        # keep whitespace
+        # for whitespace lines
         if line.strip() == '':
             output_lines += [line]
-        # for comments, keep them based on style
+        # for comments lines
         elif line.strip().startswith('#'):
-            if style == 'base':
-                pass
+            if style == 'inert':
+                output_lines += [f'#{line}']
             elif style == 'full':
                 output_lines += [line]
             elif style == 'bare':
                 pass
-        # add non-comment line, unless its bare
+            elif style == 'blank':
+                pass
+        # for non-comment line (valid settings)
         else:
-            if style != 'bare':
+            if style == 'inert':
+                output_lines += [f'# {line}']
+            elif style == 'full':
                 output_lines += [line]
+            elif style == 'bare':
+                output_lines += [line]
+            elif style == 'blank':
+                pass
 
     output_text = '\n'.join(output_lines)
     

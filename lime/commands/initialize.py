@@ -15,9 +15,11 @@ Utility to help write out the following directory/files:
         - type=workspace: write to current working directory
         - type=usr: write to user home directory
         - style:
-            - full: full config (default)
-            - base: minimal config
-            - bare: no comments
+            --inert (default):  comments: present | settings: commented
+            --full:             comments: present | settings: active
+            --bare:             comments: no      | settings: active
+            --blank:            comments: no      | settings: no
+
     - datasets: 
         - simple: .lime/data/datasets/simple
         - variety: .lime/data/datasets/variety (not implemented)        
@@ -25,8 +27,8 @@ Utility to help write out the following directory/files:
 '''
 
 def config_init(
-        config_type: str = 'workspace',
-        style: str = 'full',
+        config_type: str,
+        style: str,
 ) -> None:
 
     if config_type == 'workspace':
@@ -35,6 +37,9 @@ def config_init(
         write_dir = os.path.expanduser('~')
     else:
         raise BaseQuietError(f'config_type: {config_type} must be `workspace` or `usr`')
+    
+    if not(style in ('inert', 'full', 'bare', 'blank')):
+        raise BaseQuietError(f'style type: `{style}` is not valid')
 
     write_fn = 'config.yaml'
     config_dir = '.lime'
@@ -64,7 +69,7 @@ def config_init(
             f.write(contents)
 
         fn = os.path.join(place, 'secrets.env')
-        contents = '#OPENAI_API_KEY=sk...\n'
+        contents = "OPENAI_API_KEY='sk...'\n"
         with open(fn, 'w') as f:
             f.write(contents)
 
@@ -145,9 +150,10 @@ def setup_parser(argparser):
     # config init options
     argparser.add_argument('--usr',         action='store_true')
     argparser.add_argument('--workspace',   action='store_true')
+    argparser.add_argument('--inert',       action='store_true')
     argparser.add_argument('--full',        action='store_true')
-    argparser.add_argument('--base',        action='store_true')
     argparser.add_argument('--bare',        action='store_true')
+    argparser.add_argument('--blank',       action='store_true')
 
     # data init options
     argparser.add_argument('--simple',      action='store_true')
@@ -169,11 +175,13 @@ def main(args):
         if args.get('usr'):
             config_type = 'usr'
 
-        style = 'full'
-        if args.get('base'):
-            style = 'base'
+        style = 'inert'
+        if args.get('full'):
+            style = 'full'
         elif args.get('bare'):
             style = 'bare'
+        elif args.get('blank'):
+            style = 'blank'
 
         config_init(
             config_type = config_type,
