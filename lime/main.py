@@ -19,6 +19,10 @@ from lime.commands.check  import (
     setup_parser as check_setup_parser,
     main as check_main,
 )
+from lime.commands.render  import (
+    setup_parser as render_setup_parser,
+    main as render_main,
+)
 
 def main():
     '''
@@ -52,6 +56,11 @@ def main():
     check_parser = subparsers.add_parser('check')
     check_setup_parser(check_parser)
     check_parser.set_defaults(func=check_main)
+
+    # Subcommand: render
+    render_parser = subparsers.add_parser('render')
+    render_setup_parser(render_parser)
+    render_parser.set_defaults(func=render_main)
 
     # Invoke subcommand
     args = parser.parse_args()
