@@ -1,5 +1,6 @@
 import os
 import yaml
+from .state import Secrets
 
 class ConfigLoader:
     __loaded_configs = {}
@@ -89,6 +90,7 @@ default_config_obj = {
         'temperature': 0.0,
         'max_tokens': 20,
         'seed': None,
+        'api_key': Secrets.get('ANTHROPIC_API_KEY'),
     },
     'DefaultSettings': {
         'input_sheet_prefix': 'input',

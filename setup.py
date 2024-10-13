@@ -26,6 +26,8 @@ setup(
         'openai',
         'tiktoken',
         'flask',
+        'requests',
+        'anthropic',
     ],
     extras_require={
         'dev': ['pytest', 'jupyter', 'llama_cpp_python'],

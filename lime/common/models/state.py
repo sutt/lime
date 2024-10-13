@@ -30,6 +30,7 @@ if usr_config_fn is not None:
 # always try to load these secrets from env var
 key_names = [
     'OPENAI_API_KEY',
+    'ANTHROPIC_API_KEY',
 ]
 
 for k in key_names:

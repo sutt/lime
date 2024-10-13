@@ -16,7 +16,9 @@ from lime.common.inference.base import (
 from lime.common.inference.api_openai import (
     OpenAIModelObj,
 )
-
+from lime.common.inference.api_anthropic import (
+    AnthropicModelObj,
+)
 
 def load_chat_completion(fn: str) -> ChatCompletion:
     '''need this since oai_api.get_completion takes a ChatCompletion object'''
@@ -254,7 +256,36 @@ def test_get_sheet_fns_2():
     for fn in ANSWER:
         assert fn in sheet_fns
 
+def test_eval_anthropic():
+    '''Test Anthropic model inference with a mocked API response'''
+    model = AnthropicModelObj('claude-3.5', api_key='test_key')
+    with patch('lime.common.inference.api_anthropic.requests.post') as mock_post:
+        # Mock the JSON response from the API
+        mock_post.return_value.json.return_value = {'completion': 'Test completion'}
+        mock_post.return_value.raise_for_status = lambda: None
+
+        # Call the method to get a completion
+        completion = model._get_completion('Test prompt')
+        
+        # Assert that the completion is as expected
+        assert completion == 'Test completion'
+        # Verify that the API was called with the correct parameters
+        mock_post.assert_called_once_with(
+            'https://api.anthropic.com/v1/completions',
+            headers={
+                'Authorization': 'Bearer test_key',
+                'Content-Type': 'application/json',
+            },
+            json={
+                'model': 'claude-3.5',
+                'prompt': 'Test prompt',
+                'temperature': 0.0,
+                'max_tokens': 20,
+                'seed': None,
+            }
+        )
         
 if __name__ == '__main__':
     test_get_sheet_fns_1()
+    test_eval_anthropic()
     print('done')

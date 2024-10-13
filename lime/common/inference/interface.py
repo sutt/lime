@@ -1,6 +1,7 @@
 from typing import Union, Any, Dict, List
 from ..models.state import (
     ConfigLoader,
+    Secrets,
 )
 from .api_openai import (
     OpenAIModelObj,
@@ -13,6 +14,9 @@ from .cpl_client import (
     CPLModelObj,
 )
 
+from .api_anthropic import (
+    AnthropicModelObj, 
+)
 
 class ModelNameTypes(ConfigLoader):
     _urn = {
@@ -26,6 +30,7 @@ ModelObjVariant =  Union[
         OpenAIModelObj, 
         LocalModelObj, 
         CPLModelObj,
+        AnthropicModelObj,
     ]
 
 
@@ -34,7 +39,7 @@ def get_infer_obj(model_name: str, **kwargs) -> ModelObjVariant:
     model_type = None
     if model_name in ModelNameTypes._to_dict().keys():
         model_type = ModelNameTypes._to_dict()[model_name]
-        if model_type not in ('openai', 'local', 'cpl'):
+        if model_type not in ('openai', 'local', 'cpl', 'anthropic'):
             raise ValueError(f'model_type {model_type} not recognized')
 
     if ((model_type == 'openai') or
@@ -52,6 +57,12 @@ def get_infer_obj(model_name: str, **kwargs) -> ModelObjVariant:
             model_name,
             use_prompt_cache = kwargs.get('use_prompt_cache', False)
         )
+    
+    elif ((model_type == 'anthropic') or
+          (model_name.startswith('claude') and (model_type is None))):
+        if not Secrets.get('ANTHROPIC_API_KEY'):
+            raise ValueError("Anthropic API key not found. Please set the ANTHROPIC_API_KEY environment variable.")
+        return AnthropicModelObj(model_name, **kwargs)
     
     elif llama_cpp_loaded:
         return LocalModelObj(
