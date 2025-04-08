@@ -1,25 +1,27 @@
 import requests
+from .base import ModelObj
 
-class AnthropicModelObj:
+class AnthropicModelObj(ModelObj):
     def __init__(self, model_name: str, **kwargs):
-        self.model_name = model_name
+        super().__init__(model_name, **kwargs)
         self.api_key = kwargs.get('api_key')
         self.temperature = kwargs.get('temperature', 0.0)
         self.max_tokens = kwargs.get('max_tokens', 20)
         self.seed = kwargs.get('seed')
 
-    def _get_completion(self, prompt: str) -> str:
+    def prompt_model(self, prompt: str) -> str:
         headers = {
-            'Authorization': f'Bearer {self.api_key}',
+            'x-api-key': self.api_key,
+            'anthropic-version': '2023-06-01',
             'Content-Type': 'application/json',
         }
         data = {
             'model': self.model_name,
-            'prompt': prompt,
+            'messages': [{'role': 'user', 'content': prompt}],
             'temperature': self.temperature,
             'max_tokens': self.max_tokens,
             'seed': self.seed,
         }
-        response = requests.post('https://api.anthropic.com/v1/completions', headers=headers, json=data)
+        response = requests.post('https://api.anthropic.com/v1/messages', headers=headers, json=data)
         response.raise_for_status()
-        return response.json().get('completion', '')
+        return response.json().get('content', [{}])[0].get('text', '')
