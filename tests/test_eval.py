@@ -16,7 +16,9 @@ from lime.common.inference.base import (
 from lime.common.inference.api_openai import (
     OpenAIModelObj,
 )
-
+from lime.common.inference.api_anthropic import (
+    AnthropicModelObj,
+)
 
 def load_chat_completion(fn: str) -> ChatCompletion:
     '''need this since oai_api.get_completion takes a ChatCompletion object'''
@@ -254,7 +256,37 @@ def test_get_sheet_fns_2():
     for fn in ANSWER:
         assert fn in sheet_fns
 
+def test_eval_anthropic():
+    '''Test Anthropic model inference with a mocked API response'''
+
+    with patch('lime.common.models.state.Secrets.get', return_value='test_key'):
+        model = AnthropicModelObj('claude-3-5-sonnet')
         
+        with patch('lime.common.inference.api_anthropic.requests.post') as mock_post:
+            mock_post.return_value.json.return_value = {'content': [{'text': 'Test completion'}]}
+            mock_post.return_value.raise_for_status = lambda: None
+
+            completion = model.prompt_model('Test prompt')
+            
+            assert completion == 'Test completion'
+
+            mock_post.assert_called_once_with(
+                'https://api.anthropic.com/v1/messages',
+                headers={
+                    'x-api-key': 'test_key',
+                    'anthropic-version': '2023-06-01',
+                    'Content-Type': 'application/json',
+                },
+                json={
+                    'model': 'claude-3-5-sonnet-20240620',
+                    'messages': [{'role': 'user', 'content': 'Test prompt'}],
+                    'temperature': 0.0,
+                    'max_tokens': 20,
+                    'seed': None,
+                }
+            )
+
 if __name__ == '__main__':
     test_get_sheet_fns_1()
+    test_eval_anthropic()
     print('done')
